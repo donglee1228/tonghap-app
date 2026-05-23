@@ -126,14 +126,17 @@ function proxiedImg(url) {
   return "https://images.weserv.nl/?url=" + encodeURIComponent(url) + "&w=600&output=webp";
 }
 
-/* ===== 1단계: 홀로그램 홈 화면 — 그룹 카드 4개 (인물사진 + 라벨) ===== */
-/* 카드 라벨에 쓸 짧은 이름 + 인물사진 파일명 + 폴백 이모지 */
+/* ===== 1단계: 홀로그램 홈 화면 — 작은 네모 박스 그리드 ===== */
+/* 앞쪽 박스 = 실제 그룹(짧은 이름 + 이모지), 나머지 = 미래 콘텐츠용 빈 박스 */
 const GROUP_CARD = {
-  "남성|일반":    { name: "남성 · 일반",    img: "assets/인물/남성일반.png", emoji: "🧑" },
-  "남성|빅사이즈": { name: "남성 · 빅",      img: "assets/인물/남성빅.png",   emoji: "🧍" },
-  "여성|일반":    { name: "여성 · 일반",    img: "assets/인물/여성일반.png", emoji: "👩" },
-  "여성|빅사이즈": { name: "여성 · 빅",      img: "assets/인물/여성빅.png",   emoji: "🧍‍♀️" }
+  "남성|일반":    { name: "남성 · 일반", emoji: "🧑" },
+  "남성|빅사이즈": { name: "남성 · 빅",   emoji: "🧍" },
+  "여성|일반":    { name: "여성 · 일반", emoji: "👩" },
+  "여성|빅사이즈": { name: "여성 · 빅",   emoji: "🧍‍♀️" }
 };
+
+/* 홈 그리드 총 칸 수 (앞 4칸 = 그룹, 나머지 = 빈 placeholder) */
+const HOME_TILE_TOTAL = 15;
 
 function buildGroupScreen() {
   const box = $("#group-choices");
@@ -143,27 +146,28 @@ function buildGroupScreen() {
   const groupCount = (g) =>
     ALL.filter((p) => p.gender === g.gender && p.sizeClass === g.sizeClass).length;
 
+  // 앞쪽: 실제 그룹 타일
   GROUPS.forEach((g) => {
-    const meta = GROUP_CARD[g.gender + "|" + g.sizeClass] || { name: g.title, img: "", emoji: "👕" };
+    const meta = GROUP_CARD[g.gender + "|" + g.sizeClass] || { name: g.title, emoji: "👕" };
     const card = document.createElement("button");
     card.type = "button";
-    card.className = "group-card";
+    card.className = "group-tile";
     card.innerHTML = `
-      <span class="gc-photo">
-        <img class="gc-img" src="${esc(meta.img)}" alt="${esc(meta.name)}"
-             data-fallback="${esc(meta.emoji)}" />
-        <span class="gc-fallback" aria-hidden="true">${meta.emoji}</span>
-      </span>
-      <span class="gc-label">
-        <span class="gc-name">${esc(meta.name)}</span>
-        <span class="gc-count">${groupCount(g)}개</span>
-      </span>`;
-    // 인물사진 없으면(onerror) 깨진 아이콘 대신 그라데이션+이모지 폴백
-    const img = card.querySelector(".gc-img");
-    img.addEventListener("error", () => { card.classList.add("no-photo"); });
+      <span class="gt-emoji" aria-hidden="true">${meta.emoji}</span>
+      <span class="gt-name">${esc(meta.name)}</span>
+      <span class="gt-count">${groupCount(g)}개</span>`;
     card.addEventListener("click", () => enterGroup(g));
     box.appendChild(card);
   });
+
+  // 나머지: 미래 콘텐츠용 빈 placeholder 박스 (클릭 무반응)
+  const blanks = Math.max(0, HOME_TILE_TOTAL - GROUPS.length);
+  for (let i = 0; i < blanks; i++) {
+    const ph = document.createElement("div");
+    ph.className = "group-tile is-empty";
+    ph.setAttribute("aria-hidden", "true");
+    box.appendChild(ph);
+  }
 }
 
 /* 그룹 타일 클릭 → 종류 선택 화면으로 드릴다운 */
