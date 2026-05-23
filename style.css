@@ -305,6 +305,8 @@ button{font-family:inherit;color:inherit;}
 }
 /* 로딩 중: 이미지는 잠시 투명, 스켈레톤 셔머 노출 */
 .card-img-link.is-loading .card-img{opacity:0;}
+/* 폴백 플레이스홀더(인라인 SVG): 옷걸이 아이콘이 잘리지 않게 contain */
+.card-img.is-fallback{object-fit:contain;background:#1a2236;}
 .img-skeleton{
   position:absolute;inset:0;z-index:0;
   background:linear-gradient(100deg,#1a2236 0%,#2a3350 45%,#1a2236 90%);
