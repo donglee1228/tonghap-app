@@ -318,8 +318,27 @@ button{font-family:inherit;color:inherit;}
   display:flex;flex-direction:column;gap:3px;
   min-width:0;
   text-decoration:none;color:inherit;
+  /* button 리셋 (이제 카드 본문은 상세를 여는 버튼) */
+  width:100%;text-align:left;background:none;border:none;cursor:pointer;
+  font:inherit;-webkit-appearance:none;appearance:none;
 }
+.card-body:active{transform:scale(.99);}
 .card:active{transform:scale(.99);}
+
+/* 빅사이즈 체중추천핏 칩 (카드에서 한눈에) */
+.fit-chip{
+  display:inline-block;align-self:flex-start;max-width:100%;
+  font-size:9.5px;font-weight:800;line-height:1.4;
+  color:#ffd0dc;background:rgba(255,106,156,.16);
+  border:1px solid rgba(255,106,156,.4);
+  padding:1px 6px;border-radius:999px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+/* "자세히 ▾" 안내 */
+.card-more{
+  font-size:9.5px;font-weight:700;color:var(--point);
+  margin-top:1px;
+}
 
 /* 제목 1줄 (말줄임) */
 .card-name{
@@ -351,7 +370,6 @@ button{font-family:inherit;color:inherit;}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .card-sub b{color:var(--muted-2);font-weight:700;}
-.card-sub .fit-em{color:#ff9bae;font-weight:700;}
 
 /* 빈 상태 (그리드 전체 폭 차지) */
 .empty{
@@ -440,6 +458,50 @@ button{font-family:inherit;color:inherit;}
 .btn-ghost{background:var(--bg);border:1px solid var(--border);color:var(--text);}
 .btn-primary{background:var(--point);color:#fff;}
 .btn-ghost:active,.btn-primary:active{opacity:.85;}
+
+/* ===== 상품 상세 시트 ===== */
+.detail-sheet:not([hidden]){max-height:88vh;display:flex;flex-direction:column;}
+.detail-sheet .sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.dt-head{padding-bottom:12px;margin-bottom:6px;border-bottom:1px solid var(--border);}
+.dt-name{font-size:16px;font-weight:800;line-height:1.4;color:var(--text);margin-bottom:8px;}
+.dt-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.dt-meta .price{font-size:18px;}
+.dt-mallrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.dt-mallrow .ship-mall{font-size:11px;padding:2px 9px;}
+.dt-ship{font-size:12px;color:var(--muted-2);}
+
+/* 체중추천핏 강조 박스 */
+.dt-fit{
+  display:flex;align-items:flex-start;gap:8px;
+  margin:12px 0;padding:11px 13px;border-radius:12px;
+  background:rgba(255,106,156,.12);border:1px solid rgba(255,106,156,.38);
+  font-size:13.5px;font-weight:700;line-height:1.5;color:#ffd6e0;
+}
+.dt-fit-ico{font-size:17px;line-height:1.3;flex:0 0 auto;}
+
+.dt-sec{margin-top:14px;}
+.dt-sec h4{font-size:13px;font-weight:800;color:var(--muted-2);margin-bottom:6px;}
+.dt-sec p{font-size:13.5px;line-height:1.6;color:var(--text);}
+.dt-warn{
+  background:rgba(233,69,96,.09);border:1px solid rgba(233,69,96,.4);
+  border-radius:12px;padding:11px 13px;margin-top:14px;
+}
+.dt-warn h4{color:#ff9aab;}
+
+/* 실측 표 */
+.dt-measure{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.dt-measure>div{
+  background:var(--bg);border:1px solid var(--border);border-radius:10px;
+  padding:8px 11px;display:flex;flex-direction:column;gap:2px;
+}
+.dt-measure dt{font-size:11px;color:var(--muted);}
+.dt-measure dd{font-size:14px;font-weight:800;color:var(--text);}
+
+/* 구매 버튼 (링크형) */
+.btn-buy{
+  display:flex;align-items:center;justify-content:center;
+  text-decoration:none;
+}
 
 /* ===== 접근성: 키보드 포커스 윤곽 (마우스/터치는 표시 X) ===== */
 :focus-visible{outline:2px solid var(--point);outline-offset:2px;border-radius:8px;}
