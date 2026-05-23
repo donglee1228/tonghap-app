@@ -86,7 +86,56 @@ const GARMENT_EMOJI = {
   "아웃도어팬츠": "🥾", "져지": "🏃", "트레이닝복": "🩳"
 };
 
-const PRICE_OPTS = { "전체": Infinity, "3만원 이하": 30000, "5만원 이하": 50000, "10만원 이하": 100000 };
+/* 가격 필터: 현재 풀(선택된 종류)의 분포로 동적 생성된다. "전체"는 항상 첫 칸. */
+let PRICE_OPTS = { "전체": Infinity };
+
+/* 천원 단위 보기 좋은 값으로 올림 (3.2만 → 3.5만 식) */
+function niceRoundUp(v) {
+  if (v <= 0) return 0;
+  let step;
+  if (v < 10000) step = 1000;
+  else if (v < 50000) step = 5000;
+  else if (v < 100000) step = 10000;
+  else step = 50000;
+  return Math.ceil(v / step) * step;
+}
+function priceLabel(won) {
+  if (won >= 10000) {
+    const man = won / 10000;
+    const txt = Number.isInteger(man) ? man : man.toFixed(1);
+    return `${txt}만원 이하`;
+  }
+  return `${won.toLocaleString("ko-KR")}원 이하`;
+}
+
+/* 현재 풀의 가격 분포에 맞춰 가격 구간(분위수 기반) 동적 생성 */
+function buildPriceOpts(pool) {
+  PRICE_OPTS = { "전체": Infinity };
+  const prices = pool.map((p) => Number(p.price) || 0).filter((v) => v > 0).sort((a, b) => a - b);
+  if (prices.length < 2) return;        // 표본 부족 → "전체"만
+  const min = prices[0], max = prices[prices.length - 1];
+  if (max - min < 1000) return;          // 가격이 거의 동일 → 구간 의미 없음
+
+  const quantile = (q) => {
+    const pos = (prices.length - 1) * q;
+    const lo = Math.floor(pos), hi = Math.ceil(pos);
+    return prices[lo] + (prices[hi] - prices[lo]) * (pos - lo);
+  };
+  // 33% / 66% 분위수 기반 두 컷 + 최대(=상한)까지 포함
+  const cuts = [];
+  [0.34, 0.67].forEach((q) => {
+    const v = niceRoundUp(quantile(q));
+    if (v > min && v < max) cuts.push(v);
+  });
+  // 마지막 칸: 전체 상한 (반올림)
+  cuts.push(niceRoundUp(max));
+
+  // 중복 제거 + 오름차순
+  const seen = new Set();
+  cuts.filter((v) => { if (seen.has(v)) return false; seen.add(v); return true; })
+      .sort((a, b) => a - b)
+      .forEach((v) => { PRICE_OPTS[priceLabel(v)] = v; });
+}
 
 /* ===== 상태 ===== */
 let ALL = [];          // 이미지 있는 상품만 보관
@@ -240,6 +289,9 @@ function bindNav() {
     syncSheetUI();
   });
   $("#sheet-apply").addEventListener("click", () => { closeSheet(); render(); });
+
+  $("#detail-close").addEventListener("click", closeDetail);
+  $("#detail-backdrop").addEventListener("click", closeDetail);
 }
 
 /* ===== 하단 탭바 ===== */
@@ -269,8 +321,11 @@ function switchTab(idx) {
 
 /* ===== 목록 열기 ===== */
 function openList() {
-  const cnt = currentPool().length;
   $("#list-title").textContent = `${groupTitle()} · ${sel.garmentType}`;
+  // 현재 종류의 실제 가격 분포로 가격 필터 구간 재생성
+  buildPriceOpts(currentPool());
+  if (!(filter.price in PRICE_OPTS)) filter.price = "전체";  // 이전 구간이 사라졌으면 초기화
+  rebuildPriceChips();
   goTo("list");
   render();
 }
@@ -348,6 +403,7 @@ function render() {
   }
   grid.innerHTML = list.map(cardHTML).join("");
   bindHearts(grid);
+  bindDetails(grid);
   watchImages(grid, updateCount);
 }
 
@@ -380,6 +436,7 @@ function renderFavs() {
   }
   favGrid.innerHTML = list.map(cardHTML).join("");
   bindHearts(favGrid, true);   // 찜 탭에서 하트 해제 시 즉시 제거
+  bindDetails(favGrid);
   watchImages(favGrid);
 }
 
@@ -410,7 +467,7 @@ function cardHTML(p) {
         <span class="img-skeleton" aria-hidden="true"></span>
         <img class="card-img" src="${esc(src)}" alt="${esc(p.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-card-img="1" />
       </a>
-      <a class="card-body" ${href ? `href="${href}" target="_blank" rel="noopener noreferrer"` : ""}>
+      <button class="card-body" type="button" data-detail="${esc(p.id)}" aria-expanded="false" aria-label="${esc(p.name)} 상세 보기">
         <h3 class="card-name">${esc(p.name || "")}</h3>
         <div class="card-line">
           <span class="price">${price}<small>원</small></span>
@@ -420,16 +477,36 @@ function cardHTML(p) {
           <span class="ship-mall" style="background:${mc}">${esc(p.mall || "")}</span>
           <span class="ship-ico">${overseasIcon(p.mall)}</span>
         </div>
+        ${isBig ? bigFitChip(p) : ""}
         <div class="card-sub">${esc(subLine(p, isBig))}</div>
-      </a>
+        <span class="card-more" aria-hidden="true">자세히 ▾</span>
+      </button>
     </article>`;
 }
 
-/* 보조 회색 1줄(타일): 사이즈 · (빅이면 핏 요약). 배송/쇼핑몰은 위 mallrow에서 표기 */
+/* 빅사이즈 카드: 체중추천핏을 한눈에 보이도록 칩으로 노출 (fitText의 앞 체중 부분만 추출) */
+function bigFitChip(p) {
+  const raw = (p.fitText && String(p.fitText).trim()) ? String(p.fitText).trim() : "";
+  if (!raw) return "";
+  const kg = fitKgPart(raw);
+  return `<span class="fit-chip">🧍 ${esc(kg)}</span>`;
+}
+/* fitText에서 "남 100~140kg 추천" 같은 체중 핵심만 뽑기 (없으면 원문) */
+function fitKgPart(raw) {
+  const t = raw.replace(/^🧍\s*/, "");
+  const m = t.match(/^[^()]*추천/);   // 괄호(세부사이즈) 앞까지
+  return (m ? m[0] : t).trim();
+}
+
+/* 보조 회색 1줄(타일): 사이즈 · 실측 요약. 배송/쇼핑몰은 위 mallrow에서 표기 */
 function subLine(p, isBig) {
   const parts = [];
   if (p.sizeRange) parts.push(`📏 ${p.sizeRange}`);
-  if (isBig && p.fitText && String(p.fitText).trim()) parts.push(String(p.fitText).trim());
+  // 빅사이즈는 실측 한 항목을 추가로 (가슴/허리)
+  if (isBig) {
+    if (p.chest != null) parts.push(`가슴${esc(p.chest)}`);
+    else if (p.waist != null) parts.push(`허리${esc(p.waist)}`);
+  }
   if (!parts.length) parts.push(p.type || "");
   return parts.join(" · ");
 }
@@ -459,24 +536,6 @@ function watchImages(container, onChange) {
       }
     });
   });
-}
-
-/* ===== 실측 + 체중핏 표시 (빅사이즈 카드 전용) ===== */
-function fitHTML(p) {
-  const badge = (p.fitText && String(p.fitText).trim())
-    ? `<span class="fit-badge">🧍 ${esc(p.fitText)}</span>` : "";
-
-  const parts = [];
-  if (p.type === "하의") {
-    if (p.waist != null) parts.push(`허리 ${esc(p.waist)}cm`);
-  } else {
-    if (p.chest != null) parts.push(`가슴 ${esc(p.chest)}cm`);
-  }
-  if (p.length != null) parts.push(`총장 ${esc(p.length)}cm`);
-  const measure = parts.length ? `<div class="measure">${parts.join(" · ")}</div>` : "";
-
-  if (!badge && !measure) return "";
-  return `<div class="fit-wrap">${badge}${measure}</div>`;
 }
 
 function ratingHTML(p) {
@@ -527,12 +586,90 @@ function bindHearts(container, removeOnUnfav) {
   });
 }
 
+/* ===== 상품 상세 시트 (카드 본문 탭 시 펼침) ===== */
+function bindDetails(container) {
+  container.querySelectorAll("[data-detail]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      openDetail(btn.dataset.detail);
+    });
+  });
+}
+
+function fullMeasureHTML(p) {
+  const rows = [];
+  if (p.sizeRange) rows.push(["사이즈 범위", esc(p.sizeRange)]);
+  if (p.chest != null) rows.push(["가슴단면/둘레", esc(p.chest) + "cm"]);
+  if (p.waist != null) rows.push(["허리둘레", esc(p.waist) + "cm"]);
+  if (p.length != null) rows.push(["총장", esc(p.length) + "cm"]);
+  if (!rows.length) return "";
+  return `<dl class="dt-measure">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>`;
+}
+
+function openDetail(id) {
+  const p = ALL.find((x) => x.id === id);
+  if (!p) return;
+  computeFor(p);                       // 자기 분류 풀 기준 종합별점 계산
+  const isBig = p.sizeClass === "빅사이즈";
+  const mc = mallColor(p.mall || "");
+  const price = Number(p.price || 0).toLocaleString("ko-KR");
+  const href = p.link ? esc(p.link) : "";
+
+  const fitBlock = (isBig && p.fitText && String(p.fitText).trim())
+    ? `<div class="dt-fit"><span class="dt-fit-ico">🧍</span><span>${esc(String(p.fitText).replace(/^🧍\s*/, ""))}</span></div>`
+    : "";
+  const reviewBlock = (p.reviewSummary && String(p.reviewSummary).trim())
+    ? `<div class="dt-sec"><h4>⭐ 현실 후기 요약</h4><p>${esc(p.reviewSummary)}</p></div>` : "";
+  const cautionBlock = (p.caution && String(p.caution).trim())
+    ? `<div class="dt-sec dt-warn"><h4>⚠️ 이건 알아두세요</h4><p>${esc(p.caution)}</p></div>` : "";
+  const measureBlock = fullMeasureHTML(p)
+    ? `<div class="dt-sec"><h4>📏 실측 사이즈</h4>${fullMeasureHTML(p)}</div>` : "";
+
+  $("#detail-body").innerHTML = `
+    <div class="dt-head">
+      <h3 class="dt-name">${esc(p.name || "")}</h3>
+      <div class="dt-meta">
+        <span class="price">${price}<small>원</small></span>
+        ${ratingHTML(p)}
+      </div>
+      <div class="dt-mallrow">
+        <span class="ship-mall" style="background:${mc}">${esc(p.mall || "")}</span>
+        <span class="dt-ship">${esc(shipHint(p.mall))}</span>
+      </div>
+    </div>
+    ${fitBlock}
+    ${reviewBlock}
+    ${measureBlock}
+    ${cautionBlock}`;
+
+  const buyBtn = $("#detail-buy");
+  if (href) { buyBtn.href = href; buyBtn.style.display = ""; }
+  else { buyBtn.removeAttribute("href"); buyBtn.style.display = "none"; }
+
+  $("#detail-backdrop").hidden = false;
+  $("#detail-sheet").hidden = false;
+  document.body.classList.add("sheet-open");
+  document.addEventListener("keydown", onDetailKey);
+}
+function closeDetail() {
+  $("#detail-backdrop").hidden = true;
+  $("#detail-sheet").hidden = true;
+  document.body.classList.remove("sheet-open");
+  document.removeEventListener("keydown", onDetailKey);
+}
+function onDetailKey(e) { if (e.key === "Escape") closeDetail(); }
+
 /* ===== 필터 시트 ===== */
 function buildSheet() {
-  makeChips("#opt-price", Object.keys(PRICE_OPTS), "price");
+  rebuildPriceChips();
   const malls = Array.from(new Set(ALL.map((p) => p.mall).filter(Boolean)));
   makeChips("#opt-mall", malls, "mall");
   makeChips("#opt-sort", ["종합별점순", "가격낮은순", "가격높은순"], "sort");
+}
+
+/* 현재 PRICE_OPTS 기준으로 가격 칩 다시 그리기 (종류 진입 시마다 호출) */
+function rebuildPriceChips() {
+  if ($("#opt-price")) makeChips("#opt-price", Object.keys(PRICE_OPTS), "price");
 }
 
 function makeChips(containerSel, values, type) {
