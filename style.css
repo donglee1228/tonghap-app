@@ -108,10 +108,10 @@ button{font-family:inherit;color:inherit;}
 }
 
 /* 좌우 프리즘 크리스탈 */
-.crystal{position:absolute;z-index:1;width:88px;height:auto;
-  filter:drop-shadow(0 4px 14px rgba(255,255,255,.5));pointer-events:none;}
-.crystal-left{left:-14px;top:18%;transform:rotate(-6deg);}
-.crystal-right{right:-14px;top:30%;transform:rotate(6deg);}
+.crystal{position:absolute;z-index:1;width:84px;height:auto;
+  filter:drop-shadow(0 4px 16px rgba(255,255,255,.7));pointer-events:none;opacity:.95;}
+.crystal-left{left:-8px;top:14%;transform:rotate(-8deg);}
+.crystal-right{right:-8px;top:26%;transform:rotate(8deg);}
 
 /* 타이틀 */
 .holo-title{
