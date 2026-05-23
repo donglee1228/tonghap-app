@@ -150,6 +150,8 @@ let CUR_MALLS = [];
 /* mall 칩 더보기 펼침 상태 */
 let mallExpanded = false;
 let FAVS = loadFavs();
+let COMPARE = loadCompare();        // 비교 담은 상품 id (찜과 별개)
+const COMPARE_MAX = 4;              // 권장 최대 담기 개수
 
 /* ===== DOM ===== */
 const $ = (s) => document.querySelector(s);
@@ -177,6 +179,8 @@ async function init() {
   buildSortBar();
   bindNav();
   bindTabs();
+  bindCompare();
+  updateCompareBar();
 }
 
 /* ===== 목록 상단 정렬 바 (필터 시트와 상태 공유) ===== */
@@ -473,6 +477,7 @@ function render() {
   }
   grid.innerHTML = list.map(cardHTML).join("");
   bindHearts(grid);
+  bindCompareBtns(grid);
   bindDetails(grid);
   watchImages(grid, updateCount);
 }
@@ -506,6 +511,7 @@ function renderFavs() {
   }
   favGrid.innerHTML = list.map(cardHTML).join("");
   bindHearts(favGrid, true);   // 찜 탭에서 하트 해제 시 즉시 제거
+  bindCompareBtns(favGrid);
   bindDetails(favGrid);
   watchImages(favGrid);
 }
@@ -527,12 +533,14 @@ function cardHTML(p) {
   const src = proxiedImg(p.image);
   const isBig = p.sizeClass === "빅사이즈";
   const href = p.link ? esc(p.link) : "";
+  const cmp = COMPARE.has(p.id);
 
   return `
     <article class="card" data-id="${esc(p.id)}" data-rating="${Number(p.rating) || 0}" data-price="${Number(p.price) || 0}">
       <button class="heart-btn ${faved ? "on" : ""}" type="button" data-id="${esc(p.id)}" aria-label="찜하기" aria-pressed="${faved}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.3 8.4 1.9 5 5.3 5c2 0 3.4 1.1 4.2 2.4C10.3 6.1 11.7 5 13.7 5c3.4 0 5 3.4 3.3 6.8C19.5 16.4 12 21 12 21z" fill="${faved ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       </button>
+      <button class="cmp-btn ${cmp ? "on" : ""}" type="button" data-cmp="${esc(p.id)}" aria-label="비교 담기" aria-pressed="${cmp}" title="비교 담기">⚖️</button>
       <a class="card-img-link is-loading" ${href ? `href="${href}" target="_blank" rel="noopener noreferrer"` : ""} aria-label="${esc(p.name)} 보러가기">
         <span class="img-skeleton" aria-hidden="true"></span>
         <img class="card-img" src="${esc(src)}" alt="${esc(p.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-card-img="1" />
@@ -751,6 +759,13 @@ function openDetail(id) {
   if (href) { buyBtn.href = href; buyBtn.style.display = ""; }
   else { buyBtn.removeAttribute("href"); buyBtn.style.display = "none"; }
 
+  // 상세 시트의 비교 담기 버튼: 현재 상품 id로 토글
+  const cmpBtn = $("#detail-compare");
+  if (cmpBtn) {
+    cmpBtn.dataset.cmp = p.id;
+    syncDetailCompareBtn();
+  }
+
   $("#detail-backdrop").hidden = false;
   $("#detail-sheet").hidden = false;
   document.body.classList.add("sheet-open");
@@ -763,6 +778,252 @@ function closeDetail() {
   document.removeEventListener("keydown", onDetailKey);
 }
 function onDetailKey(e) { if (e.key === "Escape") closeDetail(); }
+
+/* ===== 상품 비교 (Compare) — localStorage, 찜과 별개 키 ===== */
+function loadCompare() {
+  try { return new Set(JSON.parse(localStorage.getItem("otssak_compare") || "[]")); }
+  catch (e) { return new Set(); }
+}
+function saveCompare() {
+  try { localStorage.setItem("otssak_compare", JSON.stringify(Array.from(COMPARE))); } catch (e) {}
+}
+
+/* 비교 담기/빼기 토글. 가득 차면(권장 최대 초과) 안내 후 무시 */
+function toggleCompare(id) {
+  if (!id) return false;
+  if (COMPARE.has(id)) {
+    COMPARE.delete(id);
+  } else {
+    if (COMPARE.size >= COMPARE_MAX) {
+      flashCompareBar(`최대 ${COMPARE_MAX}개까지 비교할 수 있어요`);
+      return false;
+    }
+    COMPARE.add(id);
+  }
+  saveCompare();
+  updateCompareBar();
+  syncCompareBtns();
+  syncDetailCompareBtn();
+  return true;
+}
+
+/* 화면에 떠있는 모든 카드 비교 버튼 상태 동기화 */
+function syncCompareBtns() {
+  document.querySelectorAll(".cmp-btn[data-cmp]").forEach((btn) => {
+    const on = COMPARE.has(btn.dataset.cmp);
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", String(on));
+  });
+}
+/* 상세 시트 안의 비교 담기 버튼 상태 동기화 */
+function syncDetailCompareBtn() {
+  const btn = $("#detail-compare");
+  if (!btn || !btn.dataset.cmp) return;
+  const on = COMPARE.has(btn.dataset.cmp);
+  btn.classList.toggle("on", on);
+  btn.setAttribute("aria-pressed", String(on));
+  btn.textContent = on ? "⚖️ 비교에서 빼기" : "⚖️ 비교 담기";
+}
+
+/* 카드 비교 버튼 클릭 바인딩 (둘러보기/찜 그리드 공용) */
+function bindCompareBtns(container) {
+  container.querySelectorAll(".cmp-btn[data-cmp]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleCompare(btn.dataset.cmp);
+    });
+  });
+}
+
+/* 하단 비교 바 갱신 (0개면 숨김) */
+function updateCompareBar() {
+  const bar = $("#compare-bar");
+  if (!bar) return;
+  const n = COMPARE.size;
+  const cnt = $("#cb-count");
+  if (cnt) cnt.textContent = String(n);
+  bar.hidden = n === 0;
+  document.body.classList.toggle("has-compare-bar", n > 0);
+}
+
+/* 비교 바에 잠깐 안내 메시지 깜빡(가득 찼을 때 등) */
+let cbFlashTimer = null;
+function flashCompareBar(msg) {
+  const bar = $("#compare-bar");
+  if (!bar) return;
+  bar.classList.add("flash");
+  const txt = bar.querySelector(".cb-text");
+  if (txt) {
+    if (!txt.dataset.orig) txt.dataset.orig = txt.innerHTML;
+    txt.textContent = msg;
+  }
+  if (cbFlashTimer) clearTimeout(cbFlashTimer);
+  cbFlashTimer = setTimeout(() => {
+    bar.classList.remove("flash");
+    if (txt && txt.dataset.orig) { txt.innerHTML = txt.dataset.orig; delete txt.dataset.orig; updateCompareBar(); }
+  }, 1600);
+}
+
+/* 비교 바 / 비교 뷰 이벤트 바인딩 */
+function bindCompare() {
+  const openBtn = $("#cb-open");
+  const clearBtn = $("#cb-clear");
+  if (openBtn) openBtn.addEventListener("click", openCompare);
+  if (clearBtn) clearBtn.addEventListener("click", clearCompare);
+
+  const closeBtn = $("#compare-close");
+  const backdrop = $("#compare-backdrop");
+  const fullClear = $("#compare-clear");
+  if (closeBtn) closeBtn.addEventListener("click", closeCompare);
+  if (backdrop) backdrop.addEventListener("click", closeCompare);
+  if (fullClear) fullClear.addEventListener("click", () => { clearCompare(); closeCompare(); });
+
+  const dc = $("#detail-compare");
+  if (dc) dc.addEventListener("click", () => { toggleCompare(dc.dataset.cmp); });
+}
+
+/* 비교 목록 전체 비우기 */
+function clearCompare() {
+  COMPARE.clear();
+  saveCompare();
+  updateCompareBar();
+  syncCompareBtns();
+  syncDetailCompareBtn();
+}
+
+/* 비교 뷰 열기 */
+function openCompare() {
+  renderCompareView();
+  $("#compare-backdrop").hidden = false;
+  $("#compare-sheet").hidden = false;
+  document.body.classList.add("sheet-open");
+  document.addEventListener("keydown", onCompareKey);
+}
+function closeCompare() {
+  $("#compare-backdrop").hidden = true;
+  $("#compare-sheet").hidden = true;
+  document.body.classList.remove("sheet-open");
+  document.removeEventListener("keydown", onCompareKey);
+}
+function onCompareKey(e) { if (e.key === "Escape") closeCompare(); }
+
+/* 비교 뷰 본문: 세로 항목 × 가로 상품 표 (가로 스크롤) */
+function renderCompareView() {
+  const body = $("#compare-body");
+  if (!body) return;
+
+  // 담은 순서 유지하며 실제 존재하는 상품만
+  const items = Array.from(COMPARE).map((id) => ALL.find((p) => p.id === id)).filter(Boolean);
+
+  if (!items.length) {
+    body.innerHTML = `<div class="empty"><span class="emoji">⚖️</span><p>담은 상품이 없어요.<br>카드의 ⚖️ 를 눌러 담아봐요!</p></div>`;
+    return;
+  }
+
+  // 각 상품의 종합별점을 자기 분류 풀 기준으로 계산
+  items.forEach(computeFor);
+
+  // 강조 기준값: 최저가 / 최고 종합별점
+  const prices = items.map((p) => Number(p.price) || Infinity);
+  const minPrice = Math.min.apply(null, prices.filter((v) => isFinite(v)));
+  const comps = items.map((p) => Number(p._composite) || 0);
+  const maxComp = Math.max.apply(null, comps);
+
+  // 어떤 실측 행을 보여줄지 — 하나라도 값이 있는 항목만 행 노출
+  const measureDefs = [
+    { key: "sizeRange", label: "사이즈범위", unit: "" },
+    { key: "chest",     label: "가슴",       unit: "cm" },
+    { key: "waist",     label: "허리",       unit: "cm" },
+    { key: "length",    label: "총장",       unit: "cm" }
+  ];
+  const shownMeasures = measureDefs.filter((m) => items.some((p) => p[m.key] != null && p[m.key] !== ""));
+  const anyBig = items.some((p) => p.sizeClass === "빅사이즈");
+
+  const cell = (inner, cls) => `<td class="${cls || ""}">${inner}</td>`;
+
+  // 헤더(썸네일+제거 버튼) 행
+  const thumbRow = items.map((p) => {
+    const src = proxiedImg(p.image);
+    return `<th scope="col" class="cmp-col">
+      <button class="cmp-remove" type="button" data-cmp-remove="${esc(p.id)}" aria-label="비교에서 빼기" title="빼기">✕</button>
+      <span class="cmp-thumb"><img src="${esc(src)}" alt="${esc(p.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-card-img="1" /></span>
+    </th>`;
+  }).join("");
+
+  // 행 빌더
+  const rows = [];
+  // 이름
+  rows.push(`<tr><th scope="row">이름</th>${items.map((p) => cell(`<span class="cmp-name">${esc(p.name || "")}</span>`)).join("")}</tr>`);
+  // 몰
+  rows.push(`<tr><th scope="row">쇼핑몰</th>${items.map((p) => {
+    const mc = mallColor(p.mall || "");
+    return cell(`<span class="ship-mall" style="background:${mc}">${esc(p.mall || "-")}</span>`);
+  }).join("")}</tr>`);
+  // 가격 (최저가 강조)
+  rows.push(`<tr><th scope="row">가격</th>${items.map((p) => {
+    const pr = Number(p.price) || 0;
+    const best = isFinite(minPrice) && pr === minPrice;
+    const txt = pr ? pr.toLocaleString("ko-KR") + "원" : "-";
+    return cell(`<span class="cmp-price">${esc(txt)}</span>${best ? `<span class="cmp-best">최저가</span>` : ""}`, best ? "is-best" : "");
+  }).join("")}</tr>`);
+  // 종합별점 (최고 강조)
+  rows.push(`<tr><th scope="row">종합별점</th>${items.map((p) => {
+    const comp = Math.max(0, Math.min(5, Number(p._composite) || 0));
+    const best = maxComp > 0 && comp === maxComp;
+    return cell(`<span class="cmp-rate">⭐ ${comp.toFixed(1)}</span>${best ? `<span class="cmp-best">최고</span>` : ""}`, best ? "is-best" : "");
+  }).join("")}</tr>`);
+  // 실측 행들
+  shownMeasures.forEach((m) => {
+    rows.push(`<tr><th scope="row">${esc(m.label)}</th>${items.map((p) => {
+      const v = (p[m.key] != null && p[m.key] !== "") ? esc(p[m.key]) + m.unit : "-";
+      return cell(`<span class="cmp-meas">${v}</span>`);
+    }).join("")}</tr>`);
+  });
+  // 핏(빅사이즈 체중추천) — 빅 상품이 하나라도 있을 때만 행 노출
+  if (anyBig) {
+    rows.push(`<tr><th scope="row">추천핏</th>${items.map((p) => {
+      const raw = (p.fitText && String(p.fitText).trim()) ? fitKgPart(String(p.fitText).trim()) : "-";
+      return cell(`<span class="cmp-fit">${esc(raw)}</span>`);
+    }).join("")}</tr>`);
+  }
+  // 구매 버튼
+  rows.push(`<tr><th scope="row">구매</th>${items.map((p) => {
+    const href = p.link ? esc(p.link) : "";
+    return cell(href
+      ? `<a class="cmp-buy" href="${href}" target="_blank" rel="noopener noreferrer">🛒 사러가기</a>`
+      : `<span class="cmp-meas">-</span>`);
+  }).join("")}</tr>`);
+
+  body.innerHTML = `
+    <div class="cmp-scroll">
+      <table class="cmp-table">
+        <thead><tr><th scope="col" class="cmp-corner">${items.length}개 비교</th>${thumbRow}</tr></thead>
+        <tbody>${rows.join("")}</tbody>
+      </table>
+    </div>`;
+
+  // 개별 제거 버튼
+  body.querySelectorAll("[data-cmp-remove]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      COMPARE.delete(btn.dataset.cmpRemove);
+      saveCompare();
+      updateCompareBar();
+      syncCompareBtns();
+      syncDetailCompareBtn();
+      if (COMPARE.size === 0) { closeCompare(); return; }
+      renderCompareView();
+    });
+  });
+  // 비교 표 썸네일도 폴백 적용 (깨진 이미지 → 플레이스홀더)
+  body.querySelectorAll("img[data-card-img]").forEach((img) => {
+    img.addEventListener("error", () => {
+      if (img.dataset.fallback === "1") return;
+      img.dataset.fallback = "1";
+      img.src = PLACEHOLDER_URI;
+    }, { once: true });
+  });
+}
 
 /* ===== 필터 시트 ===== */
 function buildSheet() {
