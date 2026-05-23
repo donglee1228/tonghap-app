@@ -65,18 +65,18 @@ button{font-family:inherit;color:inherit;}
 .step-hint{text-align:center;color:var(--muted);font-size:13px;margin-top:16px;}
 
 /* 선택 버튼 리스트 */
-.choice-list{display:flex;flex-direction:column;gap:12px;}
+.choice-list{display:flex;flex-direction:column;gap:9px;}
 .choice-btn{
-  display:flex;align-items:center;gap:14px;
-  width:100%;padding:18px 16px;text-align:left;
-  background:var(--panel);border:2px solid var(--border);border-radius:16px;
+  display:flex;align-items:center;gap:12px;
+  width:100%;padding:13px 14px;text-align:left;
+  background:var(--panel);border:2px solid var(--border);border-radius:14px;
   cursor:pointer;transition:.15s;
 }
 .choice-btn:active{transform:scale(.98);border-color:var(--point);background:var(--point-soft);}
-.choice-emoji{font-size:30px;flex:0 0 auto;}
-.choice-text{flex:1;display:flex;flex-direction:column;gap:3px;}
-.choice-text b{font-size:17px;font-weight:700;}
-.choice-text span{font-size:13px;color:var(--muted-2);}
+.choice-emoji{font-size:25px;flex:0 0 auto;}
+.choice-text{flex:1;display:flex;flex-direction:column;gap:2px;}
+.choice-text b{font-size:15px;font-weight:700;}
+.choice-text span{font-size:12px;color:var(--muted-2);}
 .choice-arrow{color:var(--muted);display:flex;}
 
 /* 단계 상단바 */
@@ -118,102 +118,83 @@ button{font-family:inherit;color:inherit;}
 .page-sub{font-size:13px;color:var(--muted);}
 .page-sub b{color:var(--point);}
 
-/* ===== 상품 그리드 ===== */
+/* ===== 상품 목록 (컴팩트 가로형 리스트) ===== */
 .grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:12px;margin-top:8px;
+  display:flex;flex-direction:column;
+  gap:7px;margin-top:8px;
 }
-@media (max-width:380px){.grid{grid-template-columns:1fr;}}
 
 .card{
   position:relative;
-  background:var(--panel);border:1px solid var(--border);border-radius:16px;
-  overflow:hidden;display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;
+  display:grid;
+  grid-template-columns:62px 1fr;
+  align-items:stretch;
+}
+.card-img-link{
+  display:block;width:62px;height:100%;min-height:62px;
+  text-decoration:none;
 }
 .card-img{
-  width:100%;aspect-ratio:16/10;object-fit:cover;
+  width:62px;height:100%;min-height:62px;
+  object-fit:cover;
   background:#0c1326;display:block;
 }
 
 /* 찜 하트 */
 .heart-btn{
-  position:absolute;top:8px;right:8px;z-index:3;
-  width:38px;height:38px;border-radius:50%;
-  background:rgba(15,18,32,.6);backdrop-filter:blur(4px);
+  position:absolute;top:4px;right:4px;z-index:3;
+  width:30px;height:30px;border-radius:50%;
+  background:rgba(15,18,32,.55);backdrop-filter:blur(4px);
   border:none;color:#fff;cursor:pointer;
   display:flex;align-items:center;justify-content:center;transition:.15s;
 }
-.heart-btn svg{width:22px;height:22px;}
+.heart-btn svg{width:18px;height:18px;}
 .heart-btn:active{transform:scale(.85);}
 .heart-btn.on{color:var(--point);}
 
-.card-body{padding:11px 12px 13px;display:flex;flex-direction:column;gap:7px;flex:1;}
-
-.badges{display:flex;gap:5px;flex-wrap:wrap;}
-.badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;color:#fff;}
-.badge.gender.male{background:#2f6fd6;}
-.badge.gender.female{background:#d65a9a;}
-.badge.gender.uni{background:#5a6275;}
-
-.card-name{font-size:13.5px;font-weight:600;line-height:1.4;color:var(--text);
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-
-.price{font-size:22px;font-weight:800;color:#fff;line-height:1;}
-.price small{font-size:13px;font-weight:600;color:var(--muted-2);margin-left:2px;}
-
-.size{font-size:12px;color:var(--muted-2);}
-.size b{color:var(--text);}
-
-/* 체중핏 + 실측 (빅사이즈 핵심 정보) */
-.fit-wrap{display:flex;flex-direction:column;gap:5px;}
-.fit-badge{
-  align-self:flex-start;
-  font-size:11.5px;font-weight:700;line-height:1.3;
-  color:#ffd0d9;
-  background:rgba(233,69,96,.16);
-  border:1px solid rgba(233,69,96,.5);
-  padding:4px 9px;border-radius:999px;
+.card-body{
+  padding:7px 38px 7px 9px;
+  display:flex;flex-direction:column;gap:3px;justify-content:center;
+  min-width:0;
+  text-decoration:none;color:inherit;
 }
-.measure{
-  font-size:11.5px;font-weight:600;color:var(--muted-2);
-  background:rgba(255,255,255,.04);
-  border:1px solid var(--border);
-  border-radius:8px;padding:4px 8px;align-self:flex-start;
+.card:active{transform:scale(.99);}
+
+/* 제목 1줄 (말줄임) */
+.card-name{
+  font-size:13px;font-weight:700;line-height:1.3;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 
-/* 별점 */
-.rating{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
-.stars{position:relative;display:inline-block;font-size:15px;line-height:1;letter-spacing:1px;}
+/* 가격 + 별점 + 쇼핑몰 한 줄 압축 */
+.card-line{display:flex;align-items:center;gap:7px;flex-wrap:nowrap;min-width:0;}
+
+.price{font-size:15px;font-weight:800;color:#fff;line-height:1;flex:0 0 auto;}
+.price small{font-size:10.5px;font-weight:600;color:var(--muted-2);margin-left:1px;}
+
+/* 별점 (압축) */
+.rating{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;}
+.stars{position:relative;display:inline-block;font-size:12px;line-height:1;letter-spacing:.5px;}
 .stars .base{color:#3a4263;}
 .stars .fill{position:absolute;left:0;top:0;color:#ffc73b;white-space:nowrap;overflow:hidden;}
-.rating-num{font-size:14px;font-weight:800;color:#ffc73b;}
-.rating-sub{font-size:11px;color:var(--muted);width:100%;}
+.rating-num{font-size:12px;font-weight:800;color:#ffc73b;}
 
-/* 별점 옆 쇼핑몰 + 배송속도 */
-.ship{display:flex;align-items:center;flex-wrap:wrap;gap:6px;}
-.ship-mall{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;color:#fff;line-height:1.5;}
-.ship-hint{font-size:11px;font-weight:600;color:var(--muted-2);}
+/* 쇼핑몰 (작게라도 항상 노출) */
+.ship-mall{font-size:9.5px;font-weight:700;padding:1.5px 6px;border-radius:999px;color:#fff;line-height:1.5;flex:0 0 auto;white-space:nowrap;}
 
-.review{font-size:12px;color:var(--muted-2);line-height:1.45;
-  background:rgba(255,255,255,.03);border-radius:10px;padding:8px 10px;}
-
-.caution{font-size:11.5px;line-height:1.4;color:#ffb4b4;
-  background:rgba(233,69,96,.12);border:1px solid rgba(233,69,96,.4);
-  border-radius:10px;padding:7px 10px;}
-
-.buy-btn{
-  margin-top:auto;display:flex;align-items:center;justify-content:center;gap:6px;
-  padding:11px;border-radius:12px;text-decoration:none;
-  background:var(--point);color:#fff;font-size:14px;font-weight:700;
-  transition:.15s;
+/* 보조 회색 1줄: 사이즈·실측·핏·배송 압축 */
+.card-sub{
+  font-size:10.5px;color:var(--muted);line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.buy-btn svg{width:17px;height:17px;}
-.buy-btn:active{opacity:.82;transform:scale(.98);}
+.card-sub b{color:var(--muted-2);font-weight:700;}
+.card-sub .fit-em{color:#ff9bae;font-weight:700;}
 
 /* 빈 상태 */
 .empty{
-  grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted-2);
+  text-align:center;padding:60px 20px;color:var(--muted-2);
 }
 .empty .emoji{font-size:54px;display:block;margin-bottom:14px;}
 .empty p{font-size:15px;line-height:1.6;}
