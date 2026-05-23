@@ -132,7 +132,7 @@ function buildGroupScreen() {
   box.innerHTML = "";
   GROUPS.forEach((g) => {
     const n = ALL.filter((p) => p.gender === g.gender && p.sizeClass === g.sizeClass).length;
-    box.appendChild(choiceBtn(g.emoji, g.title, `${g.desc} · ${n}개`, () => {
+    box.appendChild(choiceBtn(g.emoji, g.title, `${n}개`, () => {
       sel.gender = g.gender;
       sel.sizeClass = g.sizeClass;
       $("#crumb-group").textContent = g.title;
@@ -175,10 +175,8 @@ function choiceBtn(emoji, title, desc, onClick) {
   btn.className = "choice-btn";
   btn.innerHTML = `
     <span class="choice-emoji" aria-hidden="true">${emoji}</span>
-    <span class="choice-text"><b>${esc(title)}</b><span>${esc(desc)}</span></span>
-    <span class="choice-arrow" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="22" height="22"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </span>`;
+    <span class="choice-title">${esc(title)}</span>
+    <span class="choice-badge">${esc(desc)}</span>`;
   btn.addEventListener("click", onClick);
   return btn;
 }
