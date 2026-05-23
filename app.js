@@ -1,33 +1,29 @@
 "use strict";
 
-/* ===== Fallback 더미 데이터 (data.json fetch 실패 대비) ===== */
+/* ===== Fallback 더미 데이터 (data.json fetch 실패 대비 · 이미지 있는 것만) ===== */
 const FALLBACK_DATA = [
   {
     id: "d1", name: "초경량 방수 바람막이 자켓", category: "바람막이", gender: "공용",
     mall: "쿠팡", price: 29900, sizeRange: "S~3XL", sizeMax: "3XL", rating: 4.5,
     reviewSummary: "가볍고 비 와도 안 젖어요. 가성비 미쳤습니다.",
     caution: "정사이즈보다 살짝 크게 나와요. 한 치수 작게!",
-    link: "https://www.coupang.com", image: ""
+    link: "https://www.coupang.com",
+    image: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3"
   },
   {
     id: "d2", name: "기능성 등산 아웃도어 팬츠", category: "아웃도어팬츠", gender: "남성",
     mall: "네이버", price: 39900, sizeRange: "M~2XL", sizeMax: "2XL", rating: 4.0,
     reviewSummary: "신축성 좋고 땀 잘 마름. 등산 갈 때 딱이에요.",
-    caution: "", link: "https://shopping.naver.com", image: ""
+    caution: "", link: "https://shopping.naver.com",
+    image: "https://images.unsplash.com/photo-1542272604-787c3835535d"
   },
   {
     id: "d3", name: "빅사이즈 오버핏 후드 집업", category: "빅사이즈", gender: "공용",
     mall: "11번가", price: 24900, sizeRange: "L~4XL", sizeMax: "4XL", rating: 3.5,
     reviewSummary: "큰 사이즈도 넉넉해서 좋아요. 두께는 보통.",
     caution: "세탁 후 살짝 줄어든다는 후기 있음.",
-    link: "https://www.11st.co.kr", image: ""
-  },
-  {
-    id: "d4", name: "여성용 경량 바람막이 점퍼", category: "바람막이", gender: "여성",
-    mall: "알리익스프레스", price: 18900, sizeRange: "S~XL", sizeMax: "XL", rating: 4.0,
-    reviewSummary: "색감 예쁘고 가벼워요. 배송이 좀 느린 게 흠.",
-    caution: "배송 2~3주 걸릴 수 있어요.",
-    link: "https://www.aliexpress.com", image: ""
+    link: "https://www.11st.co.kr",
+    image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7"
   }
 ];
 
@@ -43,7 +39,6 @@ function mallColor(mall) {
   return `hsl(${h}, 55%, 45%)`;
 }
 
-const CAT_ICON = { "바람막이": "🧥", "아웃도어팬츠": "👖", "빅사이즈": "👕" };
 const CATEGORIES = [
   { key: "바람막이", emoji: "🧥", desc: "방풍·방수·환절기 아우터" },
   { key: "아웃도어팬츠", emoji: "👖", desc: "등산·트레킹·기능성 바지" },
@@ -58,7 +53,7 @@ const GENDERS = [
 const PRICE_OPTS = { "전체": Infinity, "3만원 이하": 30000, "5만원 이하": 50000, "10만원 이하": 100000 };
 
 /* ===== 상태 ===== */
-let ALL = [];
+let ALL = [];          // 이미지 있는 상품만 보관
 const sel = { gender: null, category: null };
 const filter = { price: "전체", malls: new Set(), sort: "종합별점순" };
 let FAVS = loadFavs();
@@ -66,12 +61,12 @@ let FAVS = loadFavs();
 /* ===== DOM ===== */
 const $ = (s) => document.querySelector(s);
 const grid = $("#grid");
+const favGrid = $("#fav-grid");
 const countEl = $("#count");
 
 init();
 
 async function init() {
-  startBackground();
   try {
     const res = await fetch("data.json", { cache: "no-store" });
     if (!res.ok) throw new Error("no data.json");
@@ -81,30 +76,19 @@ async function init() {
   } catch (e) {
     ALL = FALLBACK_DATA;
   }
+  // ★ 이미지 있는 상품만 남긴다
+  ALL = ALL.filter((p) => p.image && String(p.image).trim());
+
   buildGenderScreen();
   buildCategoryScreen();
   buildSheet();
   bindNav();
+  bindTabs();
 }
 
-/* ===== 배경 실사 사진 10초 회전 ===== */
-function startBackground() {
-  const seeds = ["jacket1", "outdoor7", "mountain3", "fashion9", "forest5", "trail8", "autumn2", "hiking4"];
-  const stage = $("#bg-stage");
-  const slides = seeds.map((s) => {
-    const div = document.createElement("div");
-    div.className = "bg-slide";
-    div.style.backgroundImage = `url(https://picsum.photos/seed/${s}/1200/2000)`;
-    stage.appendChild(div);
-    return div;
-  });
-  let idx = 0;
-  slides[0].classList.add("show");
-  setInterval(() => {
-    slides[idx].classList.remove("show");
-    idx = (idx + 1) % slides.length;
-    slides[idx].classList.add("show");
-  }, 10000);
+/* ===== weserv 프록시 이미지 URL ===== */
+function proxiedImg(url) {
+  return "https://images.weserv.nl/?url=" + encodeURIComponent(url) + "&w=600&output=webp";
 }
 
 /* ===== 1단계: 성별 선택 화면 ===== */
@@ -146,11 +130,10 @@ function choiceBtn(emoji, title, desc, onClick) {
   return btn;
 }
 
-/* ===== 화면 전환 ===== */
+/* ===== 둘러보기 내부 단계 전환 ===== */
 function goTo(step) {
-  document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+  document.querySelectorAll("#tab-browse .screen").forEach((s) => s.classList.remove("active"));
   $("#screen-" + step).classList.add("active");
-  $("#fab-filter").hidden = (step !== "list");
   window.scrollTo(0, 0);
 }
 
@@ -158,7 +141,7 @@ function bindNav() {
   $("#back-to-gender").addEventListener("click", () => goTo("gender"));
   $("#back-to-category").addEventListener("click", () => goTo("category"));
 
-  $("#fab-filter").addEventListener("click", openSheet);
+  $("#filter-btn").addEventListener("click", openSheet);
   $("#sheet-close").addEventListener("click", closeSheet);
   $("#sheet-backdrop").addEventListener("click", closeSheet);
   $("#sheet-reset").addEventListener("click", () => {
@@ -166,6 +149,26 @@ function bindNav() {
     syncSheetUI();
   });
   $("#sheet-apply").addEventListener("click", () => { closeSheet(); render(); });
+}
+
+/* ===== 하단 탭바 ===== */
+function bindTabs() {
+  const tabs = [
+    { nav: "#nav-browse", page: "#tab-browse" },
+    { nav: "#nav-favs",   page: "#tab-favs"   },
+    { nav: "#nav-info",   page: "#tab-info"   }
+  ];
+  tabs.forEach((t, idx) => {
+    $(t.nav).addEventListener("click", () => switchTab(idx));
+  });
+}
+function switchTab(idx) {
+  const navs = ["#nav-browse", "#nav-favs", "#nav-info"];
+  const pages = ["#tab-browse", "#tab-favs", "#tab-info"];
+  navs.forEach((n, i) => $(n).classList.toggle("active", i === idx));
+  pages.forEach((p, i) => $(p).classList.toggle("active", i === idx));
+  if (idx === 1) renderFavs();      // 찜 탭 들어올 때마다 갱신
+  window.scrollTo(0, 0);
 }
 
 /* ===== 목록 열기 ===== */
@@ -188,9 +191,7 @@ function genderMatch(p) {
 }
 
 /* ===== 종합 별점 계산 ===== */
-/* 같은 category 안에서 가성비 점수 산출 → composite */
 function computeComposite(list) {
-  // category별 min/max 가격
   const byCat = {};
   list.forEach((p) => {
     const c = p.category;
@@ -216,20 +217,16 @@ function computeComposite(list) {
 
 /* ===== 필터/정렬 ===== */
 function applyFilters() {
-  // 1) 성별 + 종류로 1차 풀
   let pool = ALL.filter((p) => p.category === sel.category && genderMatch(p));
-  // 2) 종합점수는 같은 category 기준으로 계산 (전체 category 풀 기준)
   const catAll = ALL.filter((p) => p.category === sel.category);
   computeComposite(catAll);
 
-  // 3) 사용자 필터
   let list = pool.filter((p) => {
     if (Number(p.price) > PRICE_OPTS[filter.price]) return false;
     if (filter.malls.size && !filter.malls.has(p.mall)) return false;
     return true;
   });
 
-  // 4) 정렬
   if (filter.sort === "가격낮은순") list.sort((a, b) => a.price - b.price);
   else if (filter.sort === "가격높은순") list.sort((a, b) => b.price - a.price);
   else list.sort((a, b) => (b._composite || 0) - (a._composite || 0) || (b.rating || 0) - (a.rating || 0));
@@ -237,25 +234,24 @@ function applyFilters() {
   return list;
 }
 
-/* ===== 렌더 ===== */
+/* ===== 둘러보기 렌더 ===== */
 function render() {
   const list = applyFilters();
-  countEl.innerHTML = `지금 <b>${list.length}</b>개 보고 있어요`;
+  updateCount(list.length);
   renderActiveFilters();
-  $("#fab-filter").classList.toggle("dot", filterActive());
+  $("#filter-btn").classList.toggle("dot", filterActive());
 
   if (!list.length) {
-    grid.innerHTML = `
-      <div class="empty">
-        <span class="emoji">🫥</span>
-        <p>헉, 조건에 맞는 옷이 없네요.<br>필터를 좀 풀어볼까요?</p>
-      </div>
-      <footer class="footer"><p>옷싹 · 가격은 변동될 수 있어요. 구매 전 다시 확인해주세요 🙏</p></footer>`;
+    grid.innerHTML = emptyHTML("헉, 조건에 맞는 옷이 없네요.<br>필터를 좀 풀어볼까요?");
     return;
   }
-  grid.innerHTML = list.map(cardHTML).join("") +
-    `<footer class="footer"><p>옷싹 · 가격은 변동될 수 있어요. 구매 전 다시 확인해주세요 🙏</p></footer>`;
-  bindHearts();
+  grid.innerHTML = list.map(cardHTML).join("");
+  bindHearts(grid);
+  watchImages(grid, updateCount);
+}
+
+function updateCount(n) {
+  countEl.innerHTML = `지금 <b>${n}</b>개 보고 있어요`;
 }
 
 function renderActiveFilters() {
@@ -269,6 +265,29 @@ function filterActive() {
   return filter.price !== "전체" || filter.malls.size > 0 || filter.sort !== "종합별점순";
 }
 
+/* ===== 찜 탭 렌더 ===== */
+function renderFavs() {
+  const list = ALL.filter((p) => FAVS.has(p.id));
+  // 별점 계산 (각 상품의 category 풀 기준)
+  ["바람막이", "아웃도어팬츠", "빅사이즈"].forEach((cat) => {
+    computeComposite(ALL.filter((p) => p.category === cat));
+  });
+
+  $("#fav-count").innerHTML = list.length ? `<b>${list.length}</b>개 담겨있어요` : "";
+
+  if (!list.length) {
+    favGrid.innerHTML = emptyHTML("아직 찜한 옷이 없어요.<br>마음에 드는 옷에 ❤️ 눌러봐요!");
+    return;
+  }
+  favGrid.innerHTML = list.map(cardHTML).join("");
+  bindHearts(favGrid, true);   // 찜 탭에서 하트 해제 시 즉시 제거
+  watchImages(favGrid);
+}
+
+function emptyHTML(msg) {
+  return `<div class="empty"><span class="emoji">🫥</span><p>${msg}</p></div>`;
+}
+
 function genderClass(g) {
   if (g === "남성") return "male";
   if (g === "여성") return "female";
@@ -277,21 +296,17 @@ function genderClass(g) {
 
 function cardHTML(p) {
   const price = Number(p.price || 0).toLocaleString("ko-KR");
-  const icon = CAT_ICON[p.category] || "👚";
-  const img = p.image
-    ? `<img class="card-img" src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'card-img placeholder',textContent:'${icon}'}))" />`
-    : `<div class="card-img placeholder">${icon}</div>`;
-
   const mc = mallColor(p.mall || "");
   const caution = (p.caution && p.caution.trim()) ? `<div class="caution">${esc(p.caution)}</div>` : "";
   const faved = FAVS.has(p.id);
+  const src = proxiedImg(p.image);
 
   return `
-    <article class="card">
+    <article class="card" data-id="${esc(p.id)}">
       <button class="heart-btn ${faved ? "on" : ""}" type="button" data-id="${esc(p.id)}" aria-label="찜하기" aria-pressed="${faved}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.3 8.4 1.9 5 5.3 5c2 0 3.4 1.1 4.2 2.4C10.3 6.1 11.7 5 13.7 5c3.4 0 5 3.4 3.3 6.8C19.5 16.4 12 21 12 21z" fill="${faved ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       </button>
-      ${img}
+      <img class="card-img" src="${esc(src)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer" data-card-img="1" />
       <div class="card-body">
         <div class="badges">
           <span class="badge gender ${genderClass(p.gender)}">${esc(p.gender || "")}</span>
@@ -299,7 +314,7 @@ function cardHTML(p) {
         </div>
         <h3 class="card-name">${esc(p.name || "")}</h3>
         <div class="price">${price}<small>원</small></div>
-        <div class="size">제공 사이즈 · <b>${esc(p.sizeRange || "-")}</b></div>
+        <div class="size">사이즈 · <b>${esc(p.sizeRange || "-")}</b></div>
         ${ratingHTML(p)}
         ${p.reviewSummary ? `<div class="review">${esc(p.reviewSummary)}</div>` : ""}
         ${caution}
@@ -308,6 +323,26 @@ function cardHTML(p) {
           구매하러 가기</a>` : ""}
       </div>
     </article>`;
+}
+
+/* 이미지 로드 실패 시 카드 통째로 제거 + 카운트 갱신 */
+function watchImages(container, onChange) {
+  container.querySelectorAll("img[data-card-img]").forEach((img) => {
+    img.addEventListener("error", () => {
+      const card = img.closest(".card");
+      if (card) card.remove();
+      if (typeof onChange === "function") {
+        const left = container.querySelectorAll(".card").length;
+        onChange(left);
+        if (!left) container.innerHTML = emptyHTML("헉, 보여줄 옷이 없네요.");
+      } else {
+        // 찜 탭: 다 사라지면 빈 안내
+        if (!container.querySelectorAll(".card").length) {
+          container.innerHTML = emptyHTML("아직 찜한 옷이 없어요.<br>마음에 드는 옷에 ❤️ 눌러봐요!");
+        }
+      }
+    });
+  });
 }
 
 function ratingHTML(p) {
@@ -334,8 +369,8 @@ function loadFavs() {
 function saveFavs() {
   try { localStorage.setItem("otssak_favs", JSON.stringify(Array.from(FAVS))); } catch (e) {}
 }
-function bindHearts() {
-  grid.querySelectorAll(".heart-btn").forEach((btn) => {
+function bindHearts(container, removeOnUnfav) {
+  container.querySelectorAll(".heart-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       const id = btn.dataset.id;
@@ -346,6 +381,15 @@ function bindHearts() {
       const path = btn.querySelector("path");
       if (path) path.setAttribute("fill", !on ? "currentColor" : "none");
       saveFavs();
+
+      // 찜 탭에서 해제하면 카드 즉시 제거
+      if (removeOnUnfav && on) {
+        const card = btn.closest(".card");
+        if (card) card.remove();
+        const left = container.querySelectorAll(".card").length;
+        $("#fav-count").innerHTML = left ? `<b>${left}</b>개 담겨있어요` : "";
+        if (!left) container.innerHTML = emptyHTML("아직 찜한 옷이 없어요.<br>마음에 드는 옷에 ❤️ 눌러봐요!");
+      }
     });
   });
 }
