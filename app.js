@@ -66,6 +66,10 @@ const SHIP_HINTS = {
 function shipHint(mall) {
   return SHIP_HINTS[mall] || "🚚 배송 정보 확인";
 }
+/* 타일용 배송 아이콘만 (해외=✈️, 국내=🚚) */
+function overseasIcon(mall) {
+  return (mall === "알리익스프레스" || mall === "테무") ? "✈️" : "🚚";
+}
 
 /* ===== 그룹(성별+사이즈) 정의 — 순서 고정 (남성 먼저) ===== */
 const GROUPS = [
@@ -367,21 +371,22 @@ function cardHTML(p) {
         <div class="card-line">
           <span class="price">${price}<small>원</small></span>
           ${ratingHTML(p)}
+        </div>
+        <div class="card-mallrow">
           <span class="ship-mall" style="background:${mc}">${esc(p.mall || "")}</span>
+          <span class="ship-ico">${overseasIcon(p.mall)}</span>
         </div>
         <div class="card-sub">${esc(subLine(p, isBig))}</div>
       </a>
     </article>`;
 }
 
-/* 보조 회색 1줄: 사이즈 · (빅이면 핏/실측) · 배송 압축 */
+/* 보조 회색 1줄(타일): 사이즈 · (빅이면 핏 요약). 배송/쇼핑몰은 위 mallrow에서 표기 */
 function subLine(p, isBig) {
   const parts = [];
   if (p.sizeRange) parts.push(`📏 ${p.sizeRange}`);
   if (isBig && p.fitText && String(p.fitText).trim()) parts.push(String(p.fitText).trim());
-  const mall = p.mall || "";
-  const isOverseas = mall === "알리익스프레스" || mall === "테무";
-  parts.push(isOverseas ? "✈️ 해외" : "🚚 국내");
+  if (!parts.length) parts.push(p.type || "");
   return parts.join(" · ");
 }
 
