@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="theme-color" content="#b8a9ff" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="옷싹" />
@@ -20,12 +20,47 @@
     <!-- ===================== 탭1: 둘러보기 ===================== -->
     <section class="tab-page active" id="tab-browse" aria-label="둘러보기">
 
-      <!-- 1단계: 진입 화면 (옷싹 타이틀 + 빈 박스 그리드) -->
+      <!-- 1단계: 진입 화면 (홀로그램 홈 — 무지개 배경 + 크리스탈 + 후광 + 그룹 카드) -->
       <div class="screen screen-step active" id="screen-group">
-        <div class="home-hero">
-          <h1 class="home-title">옷싹</h1>
+        <div class="holo-home">
+          <!-- 움직이는 무지개 오로라 배경 -->
+          <div class="holo-bg" aria-hidden="true"></div>
+          <!-- 좌우 프리즘 크리스탈 장식 (인라인 SVG) -->
+          <svg class="crystal crystal-left" viewBox="0 0 120 220" aria-hidden="true">
+            <defs>
+              <linearGradient id="cgl1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#b5f3ff"/><stop offset=".5" stop-color="#c9b8ff"/><stop offset="1" stop-color="#ffd1f0"/>
+              </linearGradient>
+              <linearGradient id="cgl2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#a0e8ff"/><stop offset="1" stop-color="#8fb6ff"/>
+              </linearGradient>
+            </defs>
+            <g opacity="0.85">
+              <polygon points="34,18 66,40 54,150 28,170 14,70" fill="url(#cgl1)" opacity="0.75"/>
+              <polygon points="66,40 90,90 70,200 54,150" fill="url(#cgl2)" opacity="0.7"/>
+              <polygon points="14,70 28,170 4,150 2,90" fill="#ffffff" opacity="0.45"/>
+              <polygon points="74,120 104,150 92,210 68,190" fill="url(#cgl1)" opacity="0.55"/>
+            </g>
+          </svg>
+          <svg class="crystal crystal-right" viewBox="0 0 120 220" aria-hidden="true">
+            <use href="#cgl1"/>
+            <g opacity="0.85" transform="translate(120,0) scale(-1,1)">
+              <polygon points="34,18 66,40 54,150 28,170 14,70" fill="url(#cgl1)" opacity="0.75"/>
+              <polygon points="66,40 90,90 70,200 54,150" fill="url(#cgl2)" opacity="0.7"/>
+              <polygon points="14,70 28,170 4,150 2,90" fill="#ffffff" opacity="0.45"/>
+              <polygon points="74,120 104,150 92,210 68,190" fill="url(#cgl1)" opacity="0.55"/>
+            </g>
+          </svg>
+
+          <h1 class="holo-title">옷싹</h1>
+          <p class="holo-sub">입어보고 싶은 옷, 골라봐요 ✨</p>
+
+          <!-- 후광 무지개 링 + 그룹 카드 -->
+          <div class="holo-stage">
+            <div class="holo-halo" aria-hidden="true"></div>
+            <div class="group-cards" id="group-choices"></div>
+          </div>
         </div>
-        <div class="blank-grid" id="group-choices"></div>
       </div>
 
       <!-- 2단계: 종류 선택 -->
