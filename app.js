@@ -1,29 +1,46 @@
 "use strict";
 
-/* ===== Fallback 더미 데이터 (data.json fetch 실패 대비 · 이미지 있는 것만) ===== */
+/* ===== Fallback 더미 데이터 (data.json fetch 실패 대비 · 각 그룹 대표 · 이미지 있는 것만) ===== */
 const FALLBACK_DATA = [
   {
-    id: "d1", name: "초경량 방수 바람막이 자켓", category: "바람막이", gender: "공용",
-    mall: "쿠팡", price: 29900, sizeRange: "S~3XL", sizeMax: "3XL", rating: 4.5,
+    id: "d1", name: "초경량 방수 바람막이 자켓", gender: "남성", sizeClass: "일반",
+    garmentType: "바람막이", type: "아우터", mall: "쿠팡", price: 29900,
+    sizeRange: "S~XL", sizeMax: "XL", chest: null, waist: null, length: null,
+    fitMinKg: null, fitMaxKg: null, fitText: null, rating: 4.5,
     reviewSummary: "가볍고 비 와도 안 젖어요. 가성비 미쳤습니다.",
     caution: "정사이즈보다 살짝 크게 나와요. 한 치수 작게!",
     link: "https://www.coupang.com",
     image: "https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3"
   },
   {
-    id: "d2", name: "기능성 등산 아웃도어 팬츠", category: "아웃도어팬츠", gender: "남성",
-    mall: "네이버", price: 39900, sizeRange: "M~2XL", sizeMax: "2XL", rating: 4.0,
-    reviewSummary: "신축성 좋고 땀 잘 마름. 등산 갈 때 딱이에요.",
-    caution: "", link: "https://shopping.naver.com",
+    id: "d2", name: "남성 빅사이즈 무지 반팔 티셔츠 (~6XL)", gender: "남성", sizeClass: "빅사이즈",
+    garmentType: "티셔츠", type: "상의", mall: "네이버", price: 14900,
+    sizeRange: "L~6XL", sizeMax: "6XL", chest: 138, waist: null, length: 80,
+    fitMinKg: 100, fitMaxKg: 150, fitText: "남 100~150kg 추천", rating: 4.0,
+    reviewSummary: "100kg 넘는데 6XL 딱 맞아요. 기장도 넉넉해서 배 안 보여요!",
+    caution: "흰색은 살짝 비치는 편이에요.",
+    link: "https://shopping.naver.com",
+    image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab"
+  },
+  {
+    id: "d3", name: "여성 등산 아웃도어 팬츠", gender: "여성", sizeClass: "일반",
+    garmentType: "아웃도어팬츠", type: "하의", mall: "네이버", price: 39000,
+    sizeRange: "XS~XL", sizeMax: "XL", chest: null, waist: null, length: null,
+    fitMinKg: null, fitMaxKg: null, fitText: null, rating: 4.5,
+    reviewSummary: "가볍고 빨리 마르고 여성핏 살아서 데일리로도 잘 입어요.",
+    caution: "인기 사이즈는 금방 품절돼요.",
+    link: "https://shopping.naver.com",
     image: "https://images.unsplash.com/photo-1542272604-787c3835535d"
   },
   {
-    id: "d3", name: "빅사이즈 오버핏 후드 집업", category: "빅사이즈", gender: "공용",
-    mall: "11번가", price: 24900, sizeRange: "L~4XL", sizeMax: "4XL", rating: 3.5,
-    reviewSummary: "큰 사이즈도 넉넉해서 좋아요. 두께는 보통.",
-    caution: "세탁 후 살짝 줄어든다는 후기 있음.",
-    link: "https://www.11st.co.kr",
-    image: "https://images.unsplash.com/photo-1556821840-3a63f95609a7"
+    id: "d4", name: "여성 빅사이즈 와이드 데님 청바지", gender: "여성", sizeClass: "빅사이즈",
+    garmentType: "청바지", type: "하의", mall: "G마켓", price: 33900,
+    sizeRange: "28~40inch", sizeMax: "40inch", chest: null, waist: 102, length: 98,
+    fitMinKg: 70, fitMaxKg: 110, fitText: "여 70~110kg 추천", rating: 4.2,
+    reviewSummary: "와이드핏이라 허벅지 안 끼고 다리 길어 보여요.",
+    caution: "데님이라 처음엔 빳빳해요.",
+    link: "https://www.gmarket.co.kr",
+    image: "https://images.unsplash.com/photo-1542272604-787c3835535d"
   }
 ];
 
@@ -39,22 +56,37 @@ function mallColor(mall) {
   return `hsl(${h}, 55%, 45%)`;
 }
 
-const CATEGORIES = [
-  { key: "바람막이", emoji: "🧥", desc: "방풍·방수·환절기 아우터" },
-  { key: "아웃도어팬츠", emoji: "👖", desc: "등산·트레킹·기능성 바지" },
-  { key: "빅사이즈", emoji: "👕", desc: "넉넉하게 입는 큰 옷" }
+/* ===== 쇼핑몰별 배송속도 힌트 ===== */
+const SHIP_HINTS = {
+  "쿠팡": "🚚 국내 빠른배송",
+  "네이버": "🚚 국내배송", "11번가": "🚚 국내배송", "G마켓": "🚚 국내배송", "옥션": "🚚 국내배송",
+  "알리익스프레스": "✈️ 해외배송 · 느림(1~3주)",
+  "테무": "✈️ 해외배송 · 느림(1~2주)"
+};
+function shipHint(mall) {
+  return SHIP_HINTS[mall] || "🚚 배송 정보 확인";
+}
+
+/* ===== 그룹(성별+사이즈) 정의 — 순서 고정 (남성 먼저) ===== */
+const GROUPS = [
+  { gender: "남성", sizeClass: "일반",    emoji: "👨",   title: "남성 · 일반",            desc: "남성 일반 사이즈" },
+  { gender: "남성", sizeClass: "빅사이즈", emoji: "🧔",   title: "남성 · 빅사이즈 (100kg↑)", desc: "큰 체형 남성 추천" },
+  { gender: "여성", sizeClass: "일반",    emoji: "👩",   title: "여성 · 일반",            desc: "여성 일반 사이즈" },
+  { gender: "여성", sizeClass: "빅사이즈", emoji: "👩‍🦰", title: "여성 · 빅사이즈 (70kg↑)",  desc: "큰 체형 여성 추천" }
 ];
-const GENDERS = [
-  { key: "남자", emoji: "👨", title: "남자 옷", desc: "남성 + 남녀공용" },
-  { key: "여자", emoji: "👩", title: "여자 옷", desc: "여성 + 남녀공용" },
-  { key: "전체", emoji: "🧑‍🤝‍🧑", title: "전체 보기", desc: "남녀공용 포함 전부" }
-];
+
+/* ===== 종류(garmentType) 정렬 순서 + 이모지 ===== */
+const GARMENT_ORDER = ["바람막이", "청바지", "티셔츠", "아웃도어팬츠", "져지", "트레이닝복"];
+const GARMENT_EMOJI = {
+  "바람막이": "🧥", "청바지": "👖", "티셔츠": "👕",
+  "아웃도어팬츠": "🥾", "져지": "🏃", "트레이닝복": "🩳"
+};
 
 const PRICE_OPTS = { "전체": Infinity, "3만원 이하": 30000, "5만원 이하": 50000, "10만원 이하": 100000 };
 
 /* ===== 상태 ===== */
 let ALL = [];          // 이미지 있는 상품만 보관
-const sel = { gender: null, category: null };
+const sel = { gender: null, sizeClass: null, garmentType: null };
 const filter = { price: "전체", malls: new Set(), sort: "종합별점순" };
 let FAVS = loadFavs();
 
@@ -79,8 +111,7 @@ async function init() {
   // ★ 이미지 있는 상품만 남긴다
   ALL = ALL.filter((p) => p.image && String(p.image).trim());
 
-  buildGenderScreen();
-  buildCategoryScreen();
+  buildGroupScreen();
   buildSheet();
   bindNav();
   bindTabs();
@@ -91,26 +122,44 @@ function proxiedImg(url) {
   return "https://images.weserv.nl/?url=" + encodeURIComponent(url) + "&w=600&output=webp";
 }
 
-/* ===== 1단계: 성별 선택 화면 ===== */
-function buildGenderScreen() {
-  const box = $("#gender-choices");
+/* ===== 1단계: 그룹(성별+사이즈) 선택 화면 ===== */
+function buildGroupScreen() {
+  const box = $("#group-choices");
   box.innerHTML = "";
-  GENDERS.forEach((g) => {
-    box.appendChild(choiceBtn(g.emoji, g.title, g.desc, () => {
-      sel.gender = g.key;
-      $("#crumb-gender").textContent = g.title;
+  GROUPS.forEach((g) => {
+    const n = ALL.filter((p) => p.gender === g.gender && p.sizeClass === g.sizeClass).length;
+    box.appendChild(choiceBtn(g.emoji, g.title, `${g.desc} · ${n}개`, () => {
+      sel.gender = g.gender;
+      sel.sizeClass = g.sizeClass;
+      $("#crumb-group").textContent = g.title;
+      buildCategoryScreen();
       goTo("category");
     }));
   });
 }
 
-/* ===== 2단계: 종류 선택 화면 ===== */
+/* ===== 2단계: 종류 선택 화면 (해당 그룹에 실제 있는 garmentType만) ===== */
 function buildCategoryScreen() {
   const box = $("#category-choices");
   box.innerHTML = "";
-  CATEGORIES.forEach((c) => {
-    box.appendChild(choiceBtn(c.emoji, c.key, c.desc, () => {
-      sel.category = c.key;
+  const pool = ALL.filter((p) => p.gender === sel.gender && p.sizeClass === sel.sizeClass);
+
+  // garmentType별 개수
+  const counts = {};
+  pool.forEach((p) => { counts[p.garmentType] = (counts[p.garmentType] || 0) + 1; });
+
+  // 지정 순서로, 상품 있는 것만
+  const types = GARMENT_ORDER.filter((t) => counts[t] > 0);
+
+  if (!types.length) {
+    box.innerHTML = `<div class="empty"><span class="emoji">🫥</span><p>이 분류엔 아직 옷이 없어요.</p></div>`;
+    return;
+  }
+
+  types.forEach((t) => {
+    const emoji = GARMENT_EMOJI[t] || "👚";
+    box.appendChild(choiceBtn(emoji, t, `${counts[t]}개`, () => {
+      sel.garmentType = t;
       openList();
     }));
   });
@@ -138,7 +187,7 @@ function goTo(step) {
 }
 
 function bindNav() {
-  $("#back-to-gender").addEventListener("click", () => goTo("gender"));
+  $("#back-to-group").addEventListener("click", () => goTo("group"));
   $("#back-to-category").addEventListener("click", () => goTo("category"));
 
   $("#filter-btn").addEventListener("click", openSheet);
@@ -173,35 +222,34 @@ function switchTab(idx) {
 
 /* ===== 목록 열기 ===== */
 function openList() {
-  $("#list-title").textContent = `${genderTitle()} · ${sel.category}`;
+  const cnt = currentPool().length;
+  $("#list-title").textContent = `${groupTitle()} · ${sel.garmentType}`;
   goTo("list");
   render();
 }
-function genderTitle() {
-  const g = GENDERS.find((x) => x.key === sel.gender);
-  return g ? g.title : "전체";
+function groupTitle() {
+  const g = GROUPS.find((x) => x.gender === sel.gender && x.sizeClass === sel.sizeClass);
+  return g ? `${g.gender}·${g.sizeClass}` : "전체";
 }
 
-/* 선택 성별이 상품 gender와 맞는지 */
-function genderMatch(p) {
-  if (sel.gender === "전체") return true;
-  if (sel.gender === "남자") return p.gender === "남성" || p.gender === "공용";
-  if (sel.gender === "여자") return p.gender === "여성" || p.gender === "공용";
-  return true;
+/* 현재 선택(성별+사이즈+종류)에 맞는 풀 */
+function currentPool() {
+  return ALL.filter((p) =>
+    p.gender === sel.gender &&
+    p.sizeClass === sel.sizeClass &&
+    p.garmentType === sel.garmentType
+  );
 }
 
-/* ===== 종합 별점 계산 ===== */
+/* ===== 종합 별점 계산 (같은 종류 풀 안에서 가성비) ===== */
 function computeComposite(list) {
-  const byCat = {};
+  let min = Infinity, max = -Infinity;
   list.forEach((p) => {
-    const c = p.category;
-    if (!byCat[c]) byCat[c] = { min: Infinity, max: -Infinity };
     const pr = Number(p.price) || 0;
-    if (pr < byCat[c].min) byCat[c].min = pr;
-    if (pr > byCat[c].max) byCat[c].max = pr;
+    if (pr < min) min = pr;
+    if (pr > max) max = pr;
   });
   list.forEach((p) => {
-    const { min, max } = byCat[p.category];
     const pr = Number(p.price) || 0;
     let valueScore;
     if (max === min) valueScore = 5;
@@ -215,11 +263,17 @@ function computeComposite(list) {
   });
 }
 
+/* 어떤 상품의 종합별점을 (자기 그룹+종류 풀 기준으로) 계산해두기 */
+function computeFor(p) {
+  computeComposite(ALL.filter((x) =>
+    x.gender === p.gender && x.sizeClass === p.sizeClass && x.garmentType === p.garmentType
+  ));
+}
+
 /* ===== 필터/정렬 ===== */
 function applyFilters() {
-  let pool = ALL.filter((p) => p.category === sel.category && genderMatch(p));
-  const catAll = ALL.filter((p) => p.category === sel.category);
-  computeComposite(catAll);
+  const pool = currentPool();
+  computeComposite(pool);   // 같은 분류 풀 기준 종합별점
 
   let list = pool.filter((p) => {
     if (Number(p.price) > PRICE_OPTS[filter.price]) return false;
@@ -268,10 +322,8 @@ function filterActive() {
 /* ===== 찜 탭 렌더 ===== */
 function renderFavs() {
   const list = ALL.filter((p) => FAVS.has(p.id));
-  // 별점 계산 (각 상품의 category 풀 기준)
-  ["바람막이", "아웃도어팬츠", "빅사이즈"].forEach((cat) => {
-    computeComposite(ALL.filter((p) => p.category === cat));
-  });
+  // 각 상품의 종합별점을 자기 분류 풀 기준으로 계산
+  list.forEach(computeFor);
 
   $("#fav-count").innerHTML = list.length ? `<b>${list.length}</b>개 담겨있어요` : "";
 
@@ -300,6 +352,7 @@ function cardHTML(p) {
   const caution = (p.caution && p.caution.trim()) ? `<div class="caution">${esc(p.caution)}</div>` : "";
   const faved = FAVS.has(p.id);
   const src = proxiedImg(p.image);
+  const isBig = p.sizeClass === "빅사이즈";
 
   return `
     <article class="card" data-id="${esc(p.id)}">
@@ -315,7 +368,12 @@ function cardHTML(p) {
         <h3 class="card-name">${esc(p.name || "")}</h3>
         <div class="price">${price}<small>원</small></div>
         <div class="size">사이즈 · <b>${esc(p.sizeRange || "-")}</b></div>
+        ${isBig ? fitHTML(p) : ""}
         ${ratingHTML(p)}
+        <div class="ship">
+          <span class="ship-mall" style="background:${mc}">${esc(p.mall || "")}</span>
+          <span class="ship-hint">${esc(shipHint(p.mall || ""))}</span>
+        </div>
         ${p.reviewSummary ? `<div class="review">${esc(p.reviewSummary)}</div>` : ""}
         ${caution}
         ${p.link ? `<a class="buy-btn" href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">
@@ -343,6 +401,24 @@ function watchImages(container, onChange) {
       }
     });
   });
+}
+
+/* ===== 실측 + 체중핏 표시 (빅사이즈 카드 전용) ===== */
+function fitHTML(p) {
+  const badge = (p.fitText && String(p.fitText).trim())
+    ? `<span class="fit-badge">🧍 ${esc(p.fitText)}</span>` : "";
+
+  const parts = [];
+  if (p.type === "하의") {
+    if (p.waist != null) parts.push(`허리 ${esc(p.waist)}cm`);
+  } else {
+    if (p.chest != null) parts.push(`가슴 ${esc(p.chest)}cm`);
+  }
+  if (p.length != null) parts.push(`총장 ${esc(p.length)}cm`);
+  const measure = parts.length ? `<div class="measure">${parts.join(" · ")}</div>` : "";
+
+  if (!badge && !measure) return "";
+  return `<div class="fit-wrap">${badge}${measure}</div>`;
 }
 
 function ratingHTML(p) {
