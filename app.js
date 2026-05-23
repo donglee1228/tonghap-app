@@ -121,9 +121,10 @@ async function init() {
   bindTabs();
 }
 
-/* ===== weserv 프록시 이미지 URL ===== */
+/* ===== weserv 프록시 이미지 URL =====
+   타일은 3열(폭 ~125px) → 2배 화면 기준 w=300이면 충분. (기존 600은 과대) */
 function proxiedImg(url) {
-  return "https://images.weserv.nl/?url=" + encodeURIComponent(url) + "&w=600&output=webp";
+  return "https://images.weserv.nl/?url=" + encodeURIComponent(url) + "&w=300&dpr=2&output=webp&q=82";
 }
 
 /* ===== 1단계: 홀로그램 홈 화면 — 작은 네모 박스 그리드 ===== */
@@ -255,7 +256,12 @@ function bindTabs() {
 function switchTab(idx) {
   const navs = ["#nav-browse", "#nav-favs", "#nav-info"];
   const pages = ["#tab-browse", "#tab-favs", "#tab-info"];
-  navs.forEach((n, i) => $(n).classList.toggle("active", i === idx));
+  navs.forEach((n, i) => {
+    const el = $(n);
+    el.classList.toggle("active", i === idx);
+    if (i === idx) el.setAttribute("aria-current", "page");
+    else el.removeAttribute("aria-current");
+  });
   pages.forEach((p, i) => $(p).classList.toggle("active", i === idx));
   if (idx === 1) renderFavs();      // 찜 탭 들어올 때마다 갱신
   window.scrollTo(0, 0);
@@ -400,8 +406,9 @@ function cardHTML(p) {
       <button class="heart-btn ${faved ? "on" : ""}" type="button" data-id="${esc(p.id)}" aria-label="찜하기" aria-pressed="${faved}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.3 8.4 1.9 5 5.3 5c2 0 3.4 1.1 4.2 2.4C10.3 6.1 11.7 5 13.7 5c3.4 0 5 3.4 3.3 6.8C19.5 16.4 12 21 12 21z" fill="${faved ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       </button>
-      <a class="card-img-link" ${href ? `href="${href}" target="_blank" rel="noopener noreferrer"` : ""} aria-label="${esc(p.name)} 보러가기">
-        <img class="card-img" src="${esc(src)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer" data-card-img="1" />
+      <a class="card-img-link is-loading" ${href ? `href="${href}" target="_blank" rel="noopener noreferrer"` : ""} aria-label="${esc(p.name)} 보러가기">
+        <span class="img-skeleton" aria-hidden="true"></span>
+        <img class="card-img" src="${esc(src)}" alt="${esc(p.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-card-img="1" />
       </a>
       <a class="card-body" ${href ? `href="${href}" target="_blank" rel="noopener noreferrer"` : ""}>
         <h3 class="card-name">${esc(p.name || "")}</h3>
@@ -427,9 +434,16 @@ function subLine(p, isBig) {
   return parts.join(" · ");
 }
 
-/* 이미지 로드 실패 시 카드 통째로 제거 + 카운트 갱신 */
+/* 이미지 로드 완료 시 스켈레톤 제거 / 실패 시 카드 통째로 제거 + 카운트 갱신 */
 function watchImages(container, onChange) {
   container.querySelectorAll("img[data-card-img]").forEach((img) => {
+    const clearSkeleton = () => {
+      const link = img.closest(".card-img-link");
+      if (link) link.classList.remove("is-loading");
+    };
+    if (img.complete && img.naturalWidth > 0) clearSkeleton();
+    else img.addEventListener("load", clearSkeleton, { once: true });
+
     img.addEventListener("error", () => {
       const card = img.closest(".card");
       if (card) card.remove();
@@ -554,10 +568,17 @@ function openSheet() {
   syncSheetUI();
   $("#sheet-backdrop").hidden = false;
   $("#filter-sheet").hidden = false;
+  document.body.classList.add("sheet-open");        // 배경 스크롤 잠금
+  document.addEventListener("keydown", onSheetKey);
 }
 function closeSheet() {
   $("#sheet-backdrop").hidden = true;
   $("#filter-sheet").hidden = true;
+  document.body.classList.remove("sheet-open");
+  document.removeEventListener("keydown", onSheetKey);
+}
+function onSheetKey(e) {
+  if (e.key === "Escape") closeSheet();
 }
 
 /* ===== util ===== */
