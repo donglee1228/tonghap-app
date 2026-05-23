@@ -596,6 +596,13 @@ function bindDetails(container) {
   });
 }
 
+/* 상세 시트 보조: seller(판매자)가 있으면 "판매: <seller>" 작게 노출. 없으면 아무것도 안 띄움(회귀 방지) */
+function sellerLine(p) {
+  const s = (p.seller && String(p.seller).trim()) ? String(p.seller).trim() : "";
+  if (!s) return "";
+  return `<div class="dt-seller"><span class="dt-seller-k">판매</span><span class="dt-seller-v">${esc(s)}</span></div>`;
+}
+
 function fullMeasureHTML(p) {
   const rows = [];
   if (p.sizeRange) rows.push(["사이즈 범위", esc(p.sizeRange)]);
@@ -636,6 +643,7 @@ function openDetail(id) {
         <span class="ship-mall" style="background:${mc}">${esc(p.mall || "")}</span>
         <span class="dt-ship">${esc(shipHint(p.mall))}</span>
       </div>
+      ${sellerLine(p)}
     </div>
     ${fitBlock}
     ${reviewBlock}
@@ -662,14 +670,27 @@ function onDetailKey(e) { if (e.key === "Escape") closeDetail(); }
 /* ===== 필터 시트 ===== */
 function buildSheet() {
   rebuildPriceChips();
-  const malls = Array.from(new Set(ALL.map((p) => p.mall).filter(Boolean)));
+  // mall 칩: 상품 수 많은 몰이 앞으로 (빈도 내림차순). 동률은 가나다순.
+  const mallCount = {};
+  ALL.forEach((p) => { if (p.mall) mallCount[p.mall] = (mallCount[p.mall] || 0) + 1; });
+  const malls = Object.keys(mallCount).sort((a, b) =>
+    (mallCount[b] - mallCount[a]) || a.localeCompare(b, "ko"));
   makeChips("#opt-mall", malls, "mall");
   makeChips("#opt-sort", ["종합별점순", "가격낮은순", "가격높은순"], "sort");
 }
 
-/* 현재 PRICE_OPTS 기준으로 가격 칩 다시 그리기 (종류 진입 시마다 호출) */
+/* 현재 PRICE_OPTS 기준으로 가격 칩 다시 그리기 (종류 진입 시마다 호출)
+   구간이 "전체" 하나뿐(표본 적음)이면 칩 행 숨기고 안내문구 노출 */
 function rebuildPriceChips() {
-  if ($("#opt-price")) makeChips("#opt-price", Object.keys(PRICE_OPTS), "price");
+  const box = $("#opt-price");
+  if (!box) return;
+  const keys = Object.keys(PRICE_OPTS);
+  const onlyAll = keys.length <= 1;            // "전체"만 있음 → 구간 의미 없음
+  makeChips("#opt-price", keys, "price");
+
+  const note = $("#price-note");
+  if (note) note.hidden = !onlyAll;
+  box.hidden = onlyAll;                          // 칩 1개("전체")만이면 행 숨김
 }
 
 function makeChips(containerSel, values, type) {
