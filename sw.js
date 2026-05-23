@@ -1,50 +1,33 @@
-/* 옷싹 서비스워커 - 최소 설치/페치 캐시 */
-const CACHE = "otssak-v1";
-const ASSETS = [
-  ".",
-  "index.html",
-  "style.css",
-  "app.js",
-  "manifest.json",
-  "icon.svg"
-];
+/* 옷싹 서비스워커 v2 - 항상 최신 우선(network-first), 오프라인 시 캐시 */
+const CACHE = "otssak-v2";
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(ASSETS)).catch(() => {})
-  );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    )
+    caches.keys()
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
 
-  // data.json 은 네트워크 우선 (최신 가격 반영), 실패 시 캐시
-  if (req.url.includes("data.json")) {
-    e.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-          return res;
-        })
-        .catch(() => caches.match(req))
-    );
-    return;
-  }
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return; // 외부(이미지 프록시 등)는 그대로 통과
 
-  // 그 외 정적 자원은 캐시 우선
+  // 네트워크 우선: 최신을 받고, 받은 건 캐시에 저장. 오프라인이면 캐시로 폴백.
   e.respondWith(
-    caches.match(req).then((cached) => cached || fetch(req))
+    fetch(req)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });
