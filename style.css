@@ -118,26 +118,28 @@ button{font-family:inherit;color:inherit;}
 .page-sub{font-size:13px;color:var(--muted);}
 .page-sub b{color:var(--point);}
 
-/* ===== 상품 목록 (컴팩트 가로형 리스트) ===== */
+/* ===== 상품 목록 (3열 정사각 타일 그리드) ===== */
 .grid{
-  display:flex;flex-direction:column;
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
   gap:7px;margin-top:8px;
+  align-items:start;
 }
 
 .card{
   position:relative;
   background:var(--panel);border:1px solid var(--border);border-radius:12px;
   overflow:hidden;
-  display:grid;
-  grid-template-columns:62px 1fr;
-  align-items:stretch;
+  display:flex;flex-direction:column;
+  min-width:0;
 }
+/* 정사각형 썸네일 (타일 폭에 꽉 차게) */
 .card-img-link{
-  display:block;width:62px;height:100%;min-height:62px;
-  text-decoration:none;
+  display:block;width:100%;aspect-ratio:1/1;
+  text-decoration:none;flex:0 0 auto;
 }
 .card-img{
-  width:62px;height:100%;min-height:62px;
+  width:100%;height:100%;
   object-fit:cover;
   background:#0c1326;display:block;
 }
@@ -145,18 +147,18 @@ button{font-family:inherit;color:inherit;}
 /* 찜 하트 */
 .heart-btn{
   position:absolute;top:4px;right:4px;z-index:3;
-  width:30px;height:30px;border-radius:50%;
+  width:28px;height:28px;border-radius:50%;
   background:rgba(15,18,32,.55);backdrop-filter:blur(4px);
   border:none;color:#fff;cursor:pointer;
   display:flex;align-items:center;justify-content:center;transition:.15s;
 }
-.heart-btn svg{width:18px;height:18px;}
+.heart-btn svg{width:16px;height:16px;}
 .heart-btn:active{transform:scale(.85);}
 .heart-btn.on{color:var(--point);}
 
 .card-body{
-  padding:7px 38px 7px 9px;
-  display:flex;flex-direction:column;gap:3px;justify-content:center;
+  padding:6px 7px 8px;
+  display:flex;flex-direction:column;gap:3px;
   min-width:0;
   text-decoration:none;color:inherit;
 }
@@ -164,36 +166,39 @@ button{font-family:inherit;color:inherit;}
 
 /* 제목 1줄 (말줄임) */
 .card-name{
-  font-size:13px;font-weight:700;line-height:1.3;color:var(--text);
+  font-size:11.5px;font-weight:700;line-height:1.3;color:var(--text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 
-/* 가격 + 별점 + 쇼핑몰 한 줄 압축 */
-.card-line{display:flex;align-items:center;gap:7px;flex-wrap:nowrap;min-width:0;}
+/* 가격 1줄 */
+.card-line{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0;}
 
-.price{font-size:15px;font-weight:800;color:#fff;line-height:1;flex:0 0 auto;}
-.price small{font-size:10.5px;font-weight:600;color:var(--muted-2);margin-left:1px;}
+.price{font-size:13px;font-weight:800;color:#fff;line-height:1.1;flex:0 0 auto;}
+.price small{font-size:9.5px;font-weight:600;color:var(--muted-2);margin-left:1px;}
 
 /* 별점 (압축) */
-.rating{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;}
-.stars{position:relative;display:inline-block;font-size:12px;line-height:1;letter-spacing:.5px;}
+.rating{display:inline-flex;align-items:center;gap:2px;flex:0 0 auto;}
+.stars{position:relative;display:inline-block;font-size:10.5px;line-height:1;letter-spacing:.5px;}
 .stars .base{color:#3a4263;}
 .stars .fill{position:absolute;left:0;top:0;color:#ffc73b;white-space:nowrap;overflow:hidden;}
-.rating-num{font-size:12px;font-weight:800;color:#ffc73b;}
+.rating-num{font-size:10.5px;font-weight:800;color:#ffc73b;}
 
-/* 쇼핑몰 (작게라도 항상 노출) */
-.ship-mall{font-size:9.5px;font-weight:700;padding:1.5px 6px;border-radius:999px;color:#fff;line-height:1.5;flex:0 0 auto;white-space:nowrap;}
+/* 쇼핑몰 + 배송 아이콘 줄 (작아도 항상 노출) */
+.card-mallrow{display:flex;align-items:center;gap:4px;min-width:0;}
+.ship-mall{font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;color:#fff;line-height:1.5;flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.ship-ico{font-size:10px;flex:0 0 auto;line-height:1;}
 
 /* 보조 회색 1줄: 사이즈·실측·핏·배송 압축 */
 .card-sub{
-  font-size:10.5px;color:var(--muted);line-height:1.35;
+  font-size:9.5px;color:var(--muted);line-height:1.3;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .card-sub b{color:var(--muted-2);font-weight:700;}
 .card-sub .fit-em{color:#ff9bae;font-weight:700;}
 
-/* 빈 상태 */
+/* 빈 상태 (그리드 전체 폭 차지) */
 .empty{
+  grid-column:1 / -1;
   text-align:center;padding:60px 20px;color:var(--muted-2);
 }
 .empty .emoji{font-size:54px;display:block;margin-bottom:14px;}
