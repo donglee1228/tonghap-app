@@ -80,6 +80,28 @@ button{font-family:inherit;color:inherit;}
   border:1px solid rgba(255,255,255,.08);
 }
 
+/* 진입 화면 앞 4칸: 실제 그룹 타일 (빈칸과 같은 정사각형 크기 안에 작게) */
+.group-tile{
+  aspect-ratio:1/1;
+  border-radius:14px;
+  background:var(--panel);
+  border:2px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:5px;padding:8px 6px;text-align:center;
+  cursor:pointer;transition:.15s;min-width:0;overflow:hidden;
+}
+.group-tile:active{transform:scale(.96);border-color:var(--point);background:var(--point-soft);}
+.gt-emoji{font-size:26px;line-height:1;flex:0 0 auto;}
+.gt-name{
+  font-size:12px;font-weight:700;line-height:1.15;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+}
+.gt-badge{
+  font-size:10px;font-weight:700;line-height:1;color:var(--point);
+  background:var(--point-soft);padding:2px 7px;border-radius:999px;
+  white-space:nowrap;
+}
+
 /* 선택 버튼 그리드 (작고 촘촘하게 · 개수 늘면 자동으로 줄바꿈) */
 .choice-list{
   display:grid;
