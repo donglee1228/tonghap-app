@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#1c2230" />
+  <meta name="theme-color" content="#14171f" />
   <title>옷싹 · 바람막이·아웃도어팬츠·빅사이즈 비교</title>
   <meta name="description" content="바람막이·아웃도어팬츠·빅사이즈 가격/별점 한눈에 비교" />
   <link rel="manifest" href="manifest.json" />
@@ -12,52 +12,95 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="logo" aria-hidden="true">🧥</span>
-      <div class="brand-text">
-        <h1>옷싹</h1>
-        <p class="subtitle">바람막이·아웃도어팬츠·빅사이즈 가격/별점 한눈에 비교</p>
+  <!-- 배경 실사 사진 회전 레이어 -->
+  <div class="bg-stage" id="bg-stage" aria-hidden="true"></div>
+  <div class="bg-overlay" aria-hidden="true"></div>
+
+  <div class="app">
+    <!-- ===== 1단계: 성별 선택 ===== -->
+    <section class="screen screen-step active" id="screen-gender" aria-label="성별 선택">
+      <div class="hero">
+        <span class="hero-logo" aria-hidden="true">🧥</span>
+        <h1 class="hero-title">옷싹</h1>
+        <p class="hero-sub">바람막이 · 아웃도어팬츠 · 빅사이즈<br>가격이랑 별점 한눈에 비교해요</p>
       </div>
-    </div>
-    <div class="search-wrap">
-      <input id="search" type="search" inputmode="search" placeholder="🔍 상품명으로 찾아보기" autocomplete="off" />
-    </div>
-  </header>
+      <p class="step-q">누구 옷 찾으세요?</p>
+      <div class="choice-list" id="gender-choices"></div>
+      <p class="step-hint">고르면 다음으로 넘어가요</p>
+    </section>
 
-  <nav class="filters" aria-label="필터">
-    <div class="filter-group">
-      <label>카테고리</label>
-      <div class="chips" id="filter-category"></div>
-    </div>
-    <div class="filter-group">
-      <label>성별</label>
-      <div class="chips" id="filter-gender"></div>
-    </div>
-    <div class="filter-group">
-      <label>가격대</label>
-      <div class="chips" id="filter-price"></div>
-    </div>
-    <div class="filter-group">
-      <label>쇼핑몰</label>
-      <div class="chips" id="filter-mall"></div>
-    </div>
-    <div class="filter-group">
-      <label>정렬</label>
-      <div class="chips" id="filter-sort"></div>
-    </div>
-  </nav>
+    <!-- ===== 2단계: 종류 선택 ===== -->
+    <section class="screen screen-step" id="screen-category" aria-label="종류 선택">
+      <div class="step-topbar">
+        <button class="icon-btn back-btn" id="back-to-gender" type="button" aria-label="뒤로가기">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="step-crumb" id="crumb-gender"></span>
+      </div>
+      <p class="step-q">어떤 옷 보실래요?</p>
+      <div class="choice-list" id="category-choices"></div>
+    </section>
 
-  <div class="count-bar">
-    <span id="count">불러오는 중...</span>
-    <button id="reset" class="reset-btn" type="button">필터 초기화</button>
+    <!-- ===== 3단계: 상품 목록 ===== -->
+    <section class="screen screen-list" id="screen-list" aria-label="상품 목록">
+      <div class="list-topbar">
+        <button class="icon-btn back-btn" id="back-to-category" type="button" aria-label="뒤로가기">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="list-titlewrap">
+          <h2 class="list-title" id="list-title">상품</h2>
+          <span class="list-count" id="count">불러오는 중...</span>
+        </div>
+      </div>
+
+      <div class="active-filters" id="active-filters"></div>
+
+      <main id="grid" class="grid" aria-live="polite"></main>
+
+      <footer class="footer">
+        <p>옷싹 · 가격은 변동될 수 있어요. 구매 전 다시 확인해주세요 🙏</p>
+      </footer>
+    </section>
+
+    <!-- 떠다니는 필터 버튼 (목록 화면에서만) -->
+    <button class="fab-filter" id="fab-filter" type="button" aria-label="필터 설정" hidden>
+      <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+        <path d="M4 7h10M18 7h2M4 17h2M10 17h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="16" cy="7" r="2.4" fill="currentColor"/>
+        <circle cx="8" cy="17" r="2.4" fill="currentColor"/>
+      </svg>
+    </button>
   </div>
 
-  <main id="grid" class="grid" aria-live="polite"></main>
-
-  <footer class="footer">
-    <p>옷싹 · 가격은 변동될 수 있어요. 구매 전 다시 확인해주세요 🙏</p>
-  </footer>
+  <!-- ===== 필터 설정 시트 ===== -->
+  <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+  <div class="sheet" id="filter-sheet" role="dialog" aria-modal="true" aria-label="필터 설정" hidden>
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h3>필터 & 정렬</h3>
+      <button class="icon-btn" id="sheet-close" type="button" aria-label="닫기">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="sheet-group">
+        <label class="sheet-label">💸 가격대</label>
+        <div class="chips" id="opt-price"></div>
+      </div>
+      <div class="sheet-group">
+        <label class="sheet-label">🛒 쇼핑몰</label>
+        <div class="chips chips-wrap" id="opt-mall"></div>
+      </div>
+      <div class="sheet-group">
+        <label class="sheet-label">↕️ 정렬</label>
+        <div class="chips" id="opt-sort"></div>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-ghost" id="sheet-reset" type="button">초기화</button>
+      <button class="btn-primary" id="sheet-apply" type="button">적용하기</button>
+    </div>
+  </div>
 
   <script src="app.js"></script>
   <script>
