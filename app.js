@@ -126,20 +126,17 @@ function proxiedImg(url) {
   return "https://images.weserv.nl/?url=" + encodeURIComponent(url) + "&w=600&output=webp";
 }
 
-/* ===== 1단계: 그룹(성별+사이즈) 선택 화면 ===== */
+/* ===== 1단계: 진입 화면 — 빈 박스 그리드(콘텐츠 채울 자리 미리 확보) ===== */
 function buildGroupScreen() {
   const box = $("#group-choices");
   box.innerHTML = "";
-  GROUPS.forEach((g) => {
-    const n = ALL.filter((p) => p.gender === g.gender && p.sizeClass === g.sizeClass).length;
-    box.appendChild(choiceBtn(g.emoji, g.title, `${n}개`, () => {
-      sel.gender = g.gender;
-      sel.sizeClass = g.sizeClass;
-      $("#crumb-group").textContent = g.title;
-      buildCategoryScreen();
-      goTo("category");
-    }));
-  });
+  const TILE_COUNT = 18;   // 스크롤하면 더 보이게 충분히 많이
+  for (let i = 0; i < TILE_COUNT; i++) {
+    const tile = document.createElement("div");
+    tile.className = "blank-tile";
+    tile.setAttribute("aria-hidden", "true");
+    box.appendChild(tile);
+  }
 }
 
 /* ===== 2단계: 종류 선택 화면 (해당 그룹에 실제 있는 garmentType만) ===== */
