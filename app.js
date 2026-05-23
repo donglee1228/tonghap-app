@@ -210,10 +210,33 @@ function syncSortBar() {
   });
 }
 
+/* ===== 인라인 SVG 플레이스홀더 (다크 톤, 외부 자원 X) =====
+   weserv가 원본을 못 가져왔을 때 default 폴백 + 타임아웃 폴백에 공용 사용.
+   배경 #1a2236(.card-img 배경과 동일) + 옷걸이 실루엣 + "이미지 준비중" 문구 */
+const PLACEHOLDER_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">' +
+  '<rect width="300" height="300" fill="#1a2236"/>' +
+  '<g fill="#46527a" opacity="0.9">' +
+  '<path d="M150 96c-12 0-21 9-21 21 0 8 4 14 11 18l-78 41c-6 3-9 8-9 14v6h194v-6c0-6-3-11-9-14l-78-41c7-4 11-10 11-18 0-12-9-21-21-21zm0 12a9 9 0 0 1 0 18 9 9 0 0 1 0-18z"/>' +
+  '</g>' +
+  '<text x="150" y="232" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-size="18" fill="#7e8ab5" text-anchor="middle">이미지 준비중</text>' +
+  '</svg>';
+/* data: URI 로 인코딩 (한글 포함 → encodeURIComponent) */
+const PLACEHOLDER_URI =
+  "data:image/svg+xml;charset=utf-8," + encodeURIComponent(PLACEHOLDER_SVG);
+
+/* 이미지 로드 타임아웃(ms): 이 안에 못 끝나면 폴백 플레이스홀더로 대체 */
+const IMG_TIMEOUT_MS = 8000;
+
 /* ===== weserv 프록시 이미지 URL =====
-   타일은 3열(폭 ~125px) → 2배 화면 기준 w=300이면 충분. (기존 600은 과대) */
+   타일은 3열(폭 ~125px) → 2배 화면 기준 w=300이면 충분. (기존 600은 과대)
+   개선:
+   - &maxage=30d : weserv CDN에 30일 캐시 → 재진입/스크롤 시 즉시 응답(다나와 등 느린 핫링크 출처 체감 개선)
+   - &default=<placeholder> : weserv가 원본을 끝내 못 가져오면 다크 톤 플레이스홀더로 우아하게 대체 */
 function proxiedImg(url) {
-  return "https://images.weserv.nl/?url=" + encodeURIComponent(url) + "&w=300&dpr=2&output=webp&q=82";
+  return "https://images.weserv.nl/?url=" + encodeURIComponent(url) +
+    "&w=300&dpr=2&output=webp&q=82&maxage=30d" +
+    "&default=" + encodeURIComponent(PLACEHOLDER_URI);
 }
 
 /* ===== 1단계: 홀로그램 홈 화면 — 작은 네모 박스 그리드 ===== */
@@ -558,17 +581,19 @@ function subLine(p, isBig) {
   return parts.join(" · ");
 }
 
-/* 이미지 로드 완료 시 스켈레톤 제거 / 실패 시 카드 통째로 제거 + 카운트 갱신 */
+/* 이미지 로드 완료 시 스켈레톤 제거 / 실패 시 카드 통째로 제거 + 카운트 갱신
+   + 8초 타임아웃 폴백: load도 error도 안 나는(영영 안 끝나는) 이미지는
+     인라인 SVG 플레이스홀더로 우아하게 교체하고 스켈레톤을 거둔다. */
 function watchImages(container, onChange) {
   container.querySelectorAll("img[data-card-img]").forEach((img) => {
+    let timer = null;
+    const stopTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
     const clearSkeleton = () => {
       const link = img.closest(".card-img-link");
       if (link) link.classList.remove("is-loading");
     };
-    if (img.complete && img.naturalWidth > 0) clearSkeleton();
-    else img.addEventListener("load", clearSkeleton, { once: true });
 
-    img.addEventListener("error", () => {
+    const onError = () => {
       const card = img.closest(".card");
       if (card) card.remove();
       if (typeof onChange === "function") {
@@ -581,7 +606,32 @@ function watchImages(container, onChange) {
           container.innerHTML = emptyHTML("아직 찜한 옷이 없어요.<br>마음에 드는 옷에 ❤️ 눌러봐요!");
         }
       }
-    });
+    };
+
+    // 타임아웃 폴백: 시간 내 로드 못 끝내면 플레이스홀더로 교체(카드는 유지)
+    const onTimeout = () => {
+      timer = null;
+      if (img.complete && img.naturalWidth > 0) { clearSkeleton(); return; }
+      if (img.dataset.fallback === "1") return;   // 이미 폴백 적용됨
+      img.dataset.fallback = "1";
+      // 폴백 이미지 자체는 즉시 로드되므로 load 핸들러가 스켈레톤을 거둠
+      img.src = PLACEHOLDER_URI;
+      img.classList.add("is-fallback");
+      clearSkeleton();
+    };
+
+    if (img.complete && img.naturalWidth > 0) {
+      clearSkeleton();
+    } else {
+      img.addEventListener("load", () => { stopTimer(); clearSkeleton(); }, { once: true });
+      img.addEventListener("error", () => {
+        stopTimer();
+        // 이미 폴백(플레이스홀더) 시도였다면 카드 제거까지 가지 말고 스켈레톤만 정리
+        if (img.dataset.fallback === "1") { clearSkeleton(); return; }
+        onError();
+      }, { once: true });
+      timer = setTimeout(onTimeout, IMG_TIMEOUT_MS);
+    }
   });
 }
 
