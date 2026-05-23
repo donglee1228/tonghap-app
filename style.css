@@ -61,23 +61,38 @@ button{font-family:inherit;color:inherit;}
 .hero-title{font-size:36px;font-weight:800;letter-spacing:1px;margin-top:8px;}
 .hero-sub{margin-top:10px;color:var(--muted-2);font-size:14px;line-height:1.55;}
 
-.step-q{font-size:19px;font-weight:700;margin:18px 4px 14px;}
-.step-hint{text-align:center;color:var(--muted);font-size:13px;margin-top:16px;}
+.step-q{font-size:17px;font-weight:700;margin:14px 4px 12px;}
+.step-hint{text-align:center;color:var(--muted);font-size:12px;margin-top:14px;}
 
-/* 선택 버튼 리스트 */
-.choice-list{display:flex;flex-direction:column;gap:9px;}
-.choice-btn{
-  display:flex;align-items:center;gap:12px;
-  width:100%;padding:13px 14px;text-align:left;
-  background:var(--panel);border:2px solid var(--border);border-radius:14px;
-  cursor:pointer;transition:.15s;
+/* 선택 버튼 그리드 (작고 촘촘하게 · 개수 늘면 자동으로 줄바꿈) */
+.choice-list{
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:7px;
 }
-.choice-btn:active{transform:scale(.98);border-color:var(--point);background:var(--point-soft);}
-.choice-emoji{font-size:25px;flex:0 0 auto;}
-.choice-text{flex:1;display:flex;flex-direction:column;gap:2px;}
-.choice-text b{font-size:15px;font-weight:700;}
-.choice-text span{font-size:12px;color:var(--muted-2);}
-.choice-arrow{color:var(--muted);display:flex;}
+/* 종류 선택은 더 잘게 3열 */
+#category-choices{grid-template-columns:repeat(3, 1fr);}
+
+.choice-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;
+  min-height:74px;padding:9px 6px;text-align:center;
+  background:var(--panel);border:2px solid var(--border);border-radius:12px;
+  cursor:pointer;transition:.15s;
+  min-width:0;
+}
+.choice-btn:active{transform:scale(.96);border-color:var(--point);background:var(--point-soft);}
+.choice-emoji{font-size:24px;line-height:1;flex:0 0 auto;}
+.choice-title{
+  font-size:12px;font-weight:700;line-height:1.2;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;
+}
+.choice-badge{
+  font-size:10.5px;font-weight:700;line-height:1;
+  color:var(--point);
+  background:var(--point-soft);
+  padding:2px 7px;border-radius:999px;
+}
 
 /* 단계 상단바 */
 .step-topbar,.list-topbar{
