@@ -204,7 +204,7 @@
     "reviewSummary": "지오다노 기본 슬림 데님인데 만 원대 특가라 가성비 좋고 4.7점. 핏 깔끔하고 실물 워싱이 사진만큼 예쁘다는 후기 우세라 4.5",
     "caution": "슬림핏이라 허벅지 두꺼우면 한 치수 위로",
     "link": "https://prod.danawa.com/info/?pcode=17100371",
-    "image": "https://img.danuri.io/catalog-image/371/100/017/43590ed61d024111a260ae862f61ff16.jpg"
+    "image": "https://img.danuri.io/catalog-image/371/100/017/27928cd837514b3cb2711dfe11ea77a7.jpg"
   },
   {
     "id": "mg-jn3",
@@ -319,7 +319,7 @@
     "reviewSummary": "리뷰 535개 4.6점, 만 원 아래인데 헤비코튼이라 안 비치고 도톰하다는 평. 가격·품질·실물 다 만족 후기 우세라 4.5",
     "caution": "헤비라 한여름엔 살짝 더울 수 있음",
     "link": "https://prod.danawa.com/info/?pcode=19783793",
-    "image": "https://img.danuri.io/catalog-image/793/783/019/d877a002fd334ffd94229437edc2735a.jpg"
+    "image": "https://img.danuri.io/catalog-image/793/783/019/10474b08feec4926854815bfb9799ece.jpg"
   },
   {
     "id": "mg-ts2",
@@ -457,7 +457,7 @@
     "reviewSummary": "리뷰 11개 4.7점, 하이쿨 흡습속건이라 등산·여름 활동에 시원하고 가볍다는 평. 가성비·기능 만족 후기 우세라 4.4",
     "caution": "기능성 위주라 캐주얼 일상복으론 핏 평범",
     "link": "https://prod.danawa.com/info/?pcode=61376030",
-    "image": "https://img.danuri.io/catalog-image/496/514/021/a1069d1079c645d8a108e44e97ddf1df.jpg"
+    "image": "https://img.danuri.io/catalog-image/030/376/061/1a287e0ec75e4302b80ed9abd86facdc.jpg"
   },
   {
     "id": "mg-op3",
@@ -825,7 +825,7 @@
     "reviewSummary": "아디다스 3선 클래식 셋업이라 디자인·핏 검증, 다만 후기 4개로 표본 적음. 브랜드 신뢰는 있으나 실물 후기 부족해 4.0",
     "caution": "후기 수 적음, 정사이즈 슬림 편",
     "link": "https://prod.danawa.com/info/?pcode=94997285",
-    "image": "https://img.danuri.io/catalog-image/621/919/058/565747a7a53149c7a0b7cd6f6ece2161.jpg"
+    "image": "https://img.danuri.io/catalog-image/285/997/094/e76e666e296a47d195491b0fbd90cbe3.jpg"
   },
   {
     "id": "mg-tr6",
@@ -1792,29 +1792,6 @@
     "caution": "정사이즈보다 작게 나옴, 무조건 한 단계 크게. 일부 색상 사진과 톤 다름 후기 있음",
     "link": "http://www.11st.co.kr/products/344870852",
     "image": "https://cdn.011st.com/11dims/resize/1000x1000/quality/75/11src/product/344870852/B.jpg?829000000"
-  },
-  {
-    "id": "cj3",
-    "name": "928 비긴 스판 밴딩 일자 블랙청바지 LAM1369 (26~40인치)",
-    "gender": "여성",
-    "sizeClass": "빅사이즈",
-    "garmentType": "청바지",
-    "type": "하의",
-    "mall": "스타일빅걸",
-    "price": 43800,
-    "sizeRange": "26~40인치",
-    "sizeMax": "40인치 (약 4XL)",
-    "chest": null,
-    "waist": 102,
-    "length": 99,
-    "fitMinKg": 70,
-    "fitMaxKg": 110,
-    "fitText": "🧍 여 70~110kg 추천 (허리 26~40인치)",
-    "rating": 4.1,
-    "reviewSummary": "인치 단위로 허리 골라 사서 핏 안 맞을 걱정 적은 일자 블랙진. 스판 밴딩이라 앉았다 일어나기 편하고 블랙이라 활용 좋다는 평",
-    "caution": "일자핏이라 허벅지 많이 굵으면 타이트할 수 있어 인치 여유 두고 선택",
-    "link": "https://stylebiggirl.co.kr/product/detail.html?product_no=133466",
-    "image": "https://stylebiggirl.co.kr/web/product/tiny/202509/aa157bee2058840d577011759140f498.jpg"
   },
   {
     "id": "cj2",
