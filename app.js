@@ -349,38 +349,40 @@ function genderClass(g) {
 function cardHTML(p) {
   const price = Number(p.price || 0).toLocaleString("ko-KR");
   const mc = mallColor(p.mall || "");
-  const caution = (p.caution && p.caution.trim()) ? `<div class="caution">${esc(p.caution)}</div>` : "";
   const faved = FAVS.has(p.id);
   const src = proxiedImg(p.image);
   const isBig = p.sizeClass === "빅사이즈";
+  const href = p.link ? esc(p.link) : "";
 
   return `
     <article class="card" data-id="${esc(p.id)}">
       <button class="heart-btn ${faved ? "on" : ""}" type="button" data-id="${esc(p.id)}" aria-label="찜하기" aria-pressed="${faved}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.3 8.4 1.9 5 5.3 5c2 0 3.4 1.1 4.2 2.4C10.3 6.1 11.7 5 13.7 5c3.4 0 5 3.4 3.3 6.8C19.5 16.4 12 21 12 21z" fill="${faved ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       </button>
-      <img class="card-img" src="${esc(src)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer" data-card-img="1" />
-      <div class="card-body">
-        <div class="badges">
-          <span class="badge gender ${genderClass(p.gender)}">${esc(p.gender || "")}</span>
-          <span class="badge mall" style="background:${mc}">${esc(p.mall || "")}</span>
-        </div>
+      <a class="card-img-link" ${href ? `href="${href}" target="_blank" rel="noopener noreferrer"` : ""} aria-label="${esc(p.name)} 보러가기">
+        <img class="card-img" src="${esc(src)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer" data-card-img="1" />
+      </a>
+      <a class="card-body" ${href ? `href="${href}" target="_blank" rel="noopener noreferrer"` : ""}>
         <h3 class="card-name">${esc(p.name || "")}</h3>
-        <div class="price">${price}<small>원</small></div>
-        <div class="size">사이즈 · <b>${esc(p.sizeRange || "-")}</b></div>
-        ${isBig ? fitHTML(p) : ""}
-        ${ratingHTML(p)}
-        <div class="ship">
+        <div class="card-line">
+          <span class="price">${price}<small>원</small></span>
+          ${ratingHTML(p)}
           <span class="ship-mall" style="background:${mc}">${esc(p.mall || "")}</span>
-          <span class="ship-hint">${esc(shipHint(p.mall || ""))}</span>
         </div>
-        ${p.reviewSummary ? `<div class="review">${esc(p.reviewSummary)}</div>` : ""}
-        ${caution}
-        ${p.link ? `<a class="buy-btn" href="${esc(p.link)}" target="_blank" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h13l-1.2 9.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 7zM9 7V5.5A2.5 2.5 0 0 1 11.5 3h1A2.5 2.5 0 0 1 15 5.5V7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          구매하러 가기</a>` : ""}
-      </div>
+        <div class="card-sub">${esc(subLine(p, isBig))}</div>
+      </a>
     </article>`;
+}
+
+/* 보조 회색 1줄: 사이즈 · (빅이면 핏/실측) · 배송 압축 */
+function subLine(p, isBig) {
+  const parts = [];
+  if (p.sizeRange) parts.push(`📏 ${p.sizeRange}`);
+  if (isBig && p.fitText && String(p.fitText).trim()) parts.push(String(p.fitText).trim());
+  const mall = p.mall || "";
+  const isOverseas = mall === "알리익스프레스" || mall === "테무";
+  parts.push(isOverseas ? "✈️ 해외" : "🚚 국내");
+  return parts.join(" · ");
 }
 
 /* 이미지 로드 실패 시 카드 통째로 제거 + 카운트 갱신 */
@@ -427,14 +429,13 @@ function ratingHTML(p) {
   const reviewR = (Number(p.rating) || 0).toFixed(1);
   const valueR = (Number(p._value) || 0).toFixed(1);
   return `
-    <div class="rating">
+    <span class="rating" title="리뷰 ${reviewR} · 가성비 ${valueR}">
       <span class="stars" aria-label="종합 별점 ${comp}점">
         <span class="base">★★★★★</span>
         <span class="fill" style="width:${pct}%">★★★★★</span>
       </span>
       <span class="rating-num">${comp.toFixed(1)}</span>
-      <span class="rating-sub">리뷰 ${reviewR} · 가성비 ${valueR}</span>
-    </div>`;
+    </span>`;
 }
 
 /* ===== 찜 (localStorage) ===== */
