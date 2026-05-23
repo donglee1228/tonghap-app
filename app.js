@@ -126,46 +126,44 @@ function proxiedImg(url) {
   return "https://images.weserv.nl/?url=" + encodeURIComponent(url) + "&w=600&output=webp";
 }
 
-/* ===== 1단계: 진입 화면 — 앞 4칸 = 그룹 타일, 나머지 = 빈 칸 ===== */
-/* 그룹 타일에 짧게 넣을 이름 (네모칸 크기에 맞게) */
-const GROUP_SHORT = {
-  "남성|일반": "남성 · 일반",
-  "남성|빅사이즈": "남성 · 빅",
-  "여성|일반": "여성 · 일반",
-  "여성|빅사이즈": "여성 · 빅"
+/* ===== 1단계: 홀로그램 홈 화면 — 그룹 카드 4개 (인물사진 + 라벨) ===== */
+/* 카드 라벨에 쓸 짧은 이름 + 인물사진 파일명 + 폴백 이모지 */
+const GROUP_CARD = {
+  "남성|일반":    { name: "남성 · 일반",    img: "assets/인물/남성일반.png", emoji: "🧑" },
+  "남성|빅사이즈": { name: "남성 · 빅",      img: "assets/인물/남성빅.png",   emoji: "🧍" },
+  "여성|일반":    { name: "여성 · 일반",    img: "assets/인물/여성일반.png", emoji: "👩" },
+  "여성|빅사이즈": { name: "여성 · 빅",      img: "assets/인물/여성빅.png",   emoji: "🧍‍♀️" }
 };
 
 function buildGroupScreen() {
   const box = $("#group-choices");
   box.innerHTML = "";
-  const TILE_COUNT = 18;   // 스크롤하면 더 보이게 충분히 많이
 
-  // 그룹별 (이미지 있는) 상품 개수
+  // 그룹별 (이미지 있는) 상품 개수 — data.json에서 동적 계산
   const groupCount = (g) =>
     ALL.filter((p) => p.gender === g.gender && p.sizeClass === g.sizeClass).length;
 
-  for (let i = 0; i < TILE_COUNT; i++) {
-    const g = GROUPS[i];
-    if (g) {
-      // 앞 4칸: 실제 그룹 진입 타일
-      const tile = document.createElement("button");
-      tile.type = "button";
-      tile.className = "group-tile";
-      const shortName = GROUP_SHORT[g.gender + "|" + g.sizeClass] || g.title;
-      tile.innerHTML = `
-        <span class="gt-emoji" aria-hidden="true">${g.emoji}</span>
-        <span class="gt-name">${esc(shortName)}</span>
-        <span class="gt-badge">${groupCount(g)}개</span>`;
-      tile.addEventListener("click", () => enterGroup(g));
-      box.appendChild(tile);
-    } else {
-      // 나머지: 빈 네모칸(자리 확보)
-      const blank = document.createElement("div");
-      blank.className = "blank-tile";
-      blank.setAttribute("aria-hidden", "true");
-      box.appendChild(blank);
-    }
-  }
+  GROUPS.forEach((g) => {
+    const meta = GROUP_CARD[g.gender + "|" + g.sizeClass] || { name: g.title, img: "", emoji: "👕" };
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "group-card";
+    card.innerHTML = `
+      <span class="gc-photo">
+        <img class="gc-img" src="${esc(meta.img)}" alt="${esc(meta.name)}"
+             data-fallback="${esc(meta.emoji)}" />
+        <span class="gc-fallback" aria-hidden="true">${meta.emoji}</span>
+      </span>
+      <span class="gc-label">
+        <span class="gc-name">${esc(meta.name)}</span>
+        <span class="gc-count">${groupCount(g)}개</span>
+      </span>`;
+    // 인물사진 없으면(onerror) 깨진 아이콘 대신 그라데이션+이모지 폴백
+    const img = card.querySelector(".gc-img");
+    img.addEventListener("error", () => { card.classList.add("no-photo"); });
+    card.addEventListener("click", () => enterGroup(g));
+    box.appendChild(card);
+  });
 }
 
 /* 그룹 타일 클릭 → 종류 선택 화면으로 드릴다운 */
