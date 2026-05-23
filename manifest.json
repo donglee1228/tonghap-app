@@ -1,7 +1,7 @@
 {
-  "name": "옷싹 - 옷 가격·별점 비교",
+  "name": "옷싹 - 쇼핑몰 옷값·별점·실측 비교",
   "short_name": "옷싹",
-  "description": "바람막이·아웃도어팬츠·빅사이즈 가격/별점 한눈에 비교",
+  "description": "쇼핑몰 옷의 가격·별점·실측 사이즈를 한눈에 비교해주는 앱이에요. 바람막이·아웃도어팬츠·빅사이즈까지 사기 전에 똑똑하게 골라보세요.",
   "lang": "ko",
   "dir": "ltr",
   "display": "standalone",
@@ -42,6 +42,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "둘러보기",
+      "short_name": "둘러보기",
+      "description": "옷 가격·별점·실측 비교 둘러보기",
+      "url": "./index.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "찜한 옷",
+      "short_name": "찜",
+      "description": "찜해둔 옷 모아보기",
+      "url": "./index.html",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

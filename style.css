@@ -669,6 +669,56 @@ body.has-compare-bar .tab-page{padding-bottom:calc(var(--nav-h) + env(safe-area-
 }
 .cmp-buy:active{opacity:.85;}
 
+/* ===== 사이클7: 비교 경험 강화 ===== */
+/* 가성비 픽 한 줄 추천 (비교 표 위) */
+.cmp-pick{
+  margin:2px 0 12px;padding:11px 13px;
+  border-radius:12px;line-height:1.45;
+  font-size:13.5px;color:var(--text);
+  background:linear-gradient(90deg, rgba(176,114,255,.20), rgba(109,194,192,.16));
+  border:1px solid rgba(176,114,255,.35);
+}
+.cmp-pick b{color:#e4c9ff;font-weight:800;}
+/* 1개만 담았을 때 비교 뷰 힌트 */
+.cmp-hint{
+  margin:2px 0 12px;padding:11px 13px;
+  border-radius:12px;line-height:1.45;
+  font-size:13px;color:var(--muted-2);
+  background:var(--panel-2);border:1px solid var(--border);
+}
+.cmp-hint b{color:var(--point);font-weight:800;}
+/* 값이 서로 다른 행: 살짝 강조 (좌측 포인트 바) — 최저가/최고별점 셀 강조와 분리되도록 행 배경만 은은하게 */
+.cmp-table tr.row-diff th[scope="row"]{
+  color:#e0a96d;
+  box-shadow:1px 0 0 var(--border), inset 3px 0 0 #e0a96d;
+}
+.cmp-table tr.row-diff td{background:rgba(224,169,109,.07);}
+/* 다른 값 행에서도 최저가/최고별점 셀의 보라 강조는 그대로 우선 */
+.cmp-table tr.row-diff td.is-best{background:rgba(176,114,255,.16);}
+/* 모두 같은 값 행: 흐리게 (차이 없음 표시) */
+.cmp-table tr.row-same td .cmp-meas,
+.cmp-table tr.row-same td .cmp-fit,
+.cmp-table tr.row-same td .cmp-price,
+.cmp-table tr.row-same td .cmp-rate{opacity:.5;}
+.cmp-table tr.row-same th[scope="row"]{opacity:.7;}
+
+/* 비교 바: 1개만 담겼을 때 힌트 */
+.cb-hint{font-weight:600;color:var(--muted-2);font-size:12px;}
+
+/* 찜 탭: 찜한 옷 한 번에 비교하기 버튼 */
+.fav-cmp-all{
+  margin-left:auto;flex:0 0 auto;align-self:center;
+  padding:8px 14px;border-radius:999px;
+  background:var(--point);border:none;
+  color:#fff;font-size:13px;font-weight:800;cursor:pointer;transition:.12s;
+  box-shadow:0 2px 10px rgba(176,114,255,.32);
+}
+.fav-cmp-all:active{transform:scale(.95);opacity:.9;}
+@media (max-width:390px){
+  .fav-cmp-all{padding:7px 11px;font-size:12px;}
+  .cmp-pick,.cmp-hint{font-size:12.5px;}
+}
+
 /* ===== 접근성: 키보드 포커스 윤곽 (마우스/터치는 표시 X) ===== */
 :focus-visible{outline:2px solid var(--point);outline-offset:2px;border-radius:8px;}
 .holo-title:focus-visible,.card-img:focus-visible{outline:none;}

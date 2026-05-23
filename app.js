@@ -504,6 +504,7 @@ function renderFavs() {
   list.forEach(computeFor);
 
   $("#fav-count").innerHTML = list.length ? `<b>${list.length}</b>개 담겨있어요` : "";
+  renderFavCompareBtn(list);
 
   if (!list.length) {
     favGrid.innerHTML = emptyHTML("아직 찜한 옷이 없어요.<br>마음에 드는 옷에 ❤️ 눌러봐요!");
@@ -514,6 +515,41 @@ function renderFavs() {
   bindCompareBtns(favGrid);
   bindDetails(favGrid);
   watchImages(favGrid);
+}
+
+/* 찜→비교 빠른 담기: 찜 탭 헤더 아래에 "찜한 옷 비교하기" 버튼을 JS로 생성.
+   - 찜이 2개 이상일 때만 노출
+   - 누르면 찜 목록 앞에서부터 최대 COMPARE_MAX개를 비교에 담고 비교 뷰 열기 */
+function renderFavCompareBtn(list) {
+  const head = document.querySelector("#tab-favs .page-head");
+  if (!head) return;
+  let btn = $("#fav-compare-all");
+  if (!list || list.length < 2) {
+    if (btn) btn.remove();
+    return;
+  }
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.id = "fav-compare-all";
+    btn.type = "button";
+    btn.className = "fav-cmp-all";
+    head.appendChild(btn);
+    btn.addEventListener("click", sendFavsToCompare);
+  }
+  const n = Math.min(list.length, COMPARE_MAX);
+  btn.textContent = `⚖️ 찜한 옷 비교하기 (${n}개)`;
+}
+
+/* 찜 목록을 비교로 한 번에 보내기 (최대 COMPARE_MAX 존중) */
+function sendFavsToCompare() {
+  const ids = ALL.filter((p) => FAVS.has(p.id)).map((p) => p.id);
+  if (!ids.length) return;
+  COMPARE = new Set(ids.slice(0, COMPARE_MAX));   // 앞에서부터 최대 4개
+  saveCompare();
+  updateCompareBar();
+  syncCompareBtns();
+  syncDetailCompareBtn();
+  openCompare();
 }
 
 function emptyHTML(msg) {
@@ -845,6 +881,22 @@ function updateCompareBar() {
   if (cnt) cnt.textContent = String(n);
   bar.hidden = n === 0;
   document.body.classList.toggle("has-compare-bar", n > 0);
+
+  // 1개만 담겼을 때 친근한 힌트 노출 (2개↑면 안내 제거)
+  const txt = bar.querySelector(".cb-text");
+  if (txt && !txt.dataset.orig) {   // flash 중이면 건드리지 않음
+    let hint = txt.querySelector(".cb-hint");
+    if (n === 1) {
+      if (!hint) {
+        hint = document.createElement("span");
+        hint.className = "cb-hint";
+        txt.appendChild(hint);
+      }
+      hint.textContent = " · 1개 더 담으면 비교 가능!";
+    } else if (hint) {
+      hint.remove();
+    }
+  }
 }
 
 /* 비교 바에 잠깐 안내 메시지 깜빡(가득 찼을 때 등) */
@@ -930,6 +982,9 @@ function renderCompareView() {
   const comps = items.map((p) => Number(p._composite) || 0);
   const maxComp = Math.max.apply(null, comps);
 
+  // 가성비 픽 1개 선정 (담은 상품들 안에서만, 별점/가격 정규화 균형 점수)
+  const bestPick = pickValuePick(items);
+
   // 어떤 실측 행을 보여줄지 — 하나라도 값이 있는 항목만 행 노출
   const measureDefs = [
     { key: "sizeRange", label: "사이즈범위", unit: "" },
@@ -942,6 +997,18 @@ function renderCompareView() {
 
   const cell = (inner, cls) => `<td class="${cls || ""}">${inner}</td>`;
 
+  // 행 값들이 서로 다른지 판정 → 다르면 강조(diff), 모두 같으면 흐리게(same).
+  // (2개 이상일 때만 의미. 1개면 강조/흐림 없음)
+  function rowClass(vals) {
+    if (items.length < 2) return "";
+    const norm = vals.map((v) => (v == null || v === "" ) ? "" : String(v).trim());
+    const real = norm.filter((v) => v !== "" && v !== "-");
+    if (real.length < 2) return "";              // 비교할 값이 1개 이하 → 판정 보류
+    const allSame = real.every((v) => v === real[0]) && norm.every((v) => v !== "");
+    return allSame ? "row-same" : "row-diff";
+  }
+  const trOpen = (cls) => `<tr class="${cls || ""}">`;
+
   // 헤더(썸네일+제거 버튼) 행
   const thumbRow = items.map((p) => {
     const src = proxiedImg(p.image);
@@ -953,36 +1020,36 @@ function renderCompareView() {
 
   // 행 빌더
   const rows = [];
-  // 이름
+  // 이름 (차이 판정 제외 — 이름은 보통 다 다름)
   rows.push(`<tr><th scope="row">이름</th>${items.map((p) => cell(`<span class="cmp-name">${esc(p.name || "")}</span>`)).join("")}</tr>`);
   // 몰
-  rows.push(`<tr><th scope="row">쇼핑몰</th>${items.map((p) => {
+  rows.push(`${trOpen(rowClass(items.map((p) => p.mall)))}<th scope="row">쇼핑몰</th>${items.map((p) => {
     const mc = mallColor(p.mall || "");
     return cell(`<span class="ship-mall" style="background:${mc}">${esc(p.mall || "-")}</span>`);
   }).join("")}</tr>`);
   // 가격 (최저가 강조)
-  rows.push(`<tr><th scope="row">가격</th>${items.map((p) => {
+  rows.push(`${trOpen(rowClass(items.map((p) => Number(p.price) || "")))}<th scope="row">가격</th>${items.map((p) => {
     const pr = Number(p.price) || 0;
     const best = isFinite(minPrice) && pr === minPrice;
     const txt = pr ? pr.toLocaleString("ko-KR") + "원" : "-";
     return cell(`<span class="cmp-price">${esc(txt)}</span>${best ? `<span class="cmp-best">최저가</span>` : ""}`, best ? "is-best" : "");
   }).join("")}</tr>`);
   // 종합별점 (최고 강조)
-  rows.push(`<tr><th scope="row">종합별점</th>${items.map((p) => {
+  rows.push(`${trOpen(rowClass(items.map((p) => Math.max(0, Math.min(5, Number(p._composite) || 0)).toFixed(1))))}<th scope="row">종합별점</th>${items.map((p) => {
     const comp = Math.max(0, Math.min(5, Number(p._composite) || 0));
     const best = maxComp > 0 && comp === maxComp;
     return cell(`<span class="cmp-rate">⭐ ${comp.toFixed(1)}</span>${best ? `<span class="cmp-best">최고</span>` : ""}`, best ? "is-best" : "");
   }).join("")}</tr>`);
   // 실측 행들
   shownMeasures.forEach((m) => {
-    rows.push(`<tr><th scope="row">${esc(m.label)}</th>${items.map((p) => {
+    rows.push(`${trOpen(rowClass(items.map((p) => (p[m.key] != null && p[m.key] !== "") ? p[m.key] + m.unit : "")))}<th scope="row">${esc(m.label)}</th>${items.map((p) => {
       const v = (p[m.key] != null && p[m.key] !== "") ? esc(p[m.key]) + m.unit : "-";
       return cell(`<span class="cmp-meas">${v}</span>`);
     }).join("")}</tr>`);
   });
   // 핏(빅사이즈 체중추천) — 빅 상품이 하나라도 있을 때만 행 노출
   if (anyBig) {
-    rows.push(`<tr><th scope="row">추천핏</th>${items.map((p) => {
+    rows.push(`${trOpen(rowClass(items.map((p) => (p.fitText && String(p.fitText).trim()) ? fitKgPart(String(p.fitText).trim()) : "")))}<th scope="row">추천핏</th>${items.map((p) => {
       const raw = (p.fitText && String(p.fitText).trim()) ? fitKgPart(String(p.fitText).trim()) : "-";
       return cell(`<span class="cmp-fit">${esc(raw)}</span>`);
     }).join("")}</tr>`);
@@ -995,7 +1062,16 @@ function renderCompareView() {
       : `<span class="cmp-meas">-</span>`);
   }).join("")}</tr>`);
 
+  // 상단 안내: 2개↑면 가성비 픽 한 줄, 1개면 "더 담으면 좋아요" 힌트
+  let topNote = "";
+  if (items.length >= 2 && bestPick) {
+    topNote = `<div class="cmp-pick">💡 이 중엔 <b>${esc(shortName(bestPick.name))}</b>이 가성비 갓벽이에요!</div>`;
+  } else if (items.length === 1) {
+    topNote = `<div class="cmp-hint">🙂 하나만 담겼어요. <b>2개 이상</b> 담으면 가격·별점을 나란히 비교할 수 있어요!</div>`;
+  }
+
   body.innerHTML = `
+    ${topNote}
     <div class="cmp-scroll">
       <table class="cmp-table">
         <thead><tr><th scope="col" class="cmp-corner">${items.length}개 비교</th>${thumbRow}</tr></thead>
@@ -1023,6 +1099,35 @@ function renderCompareView() {
       img.src = PLACEHOLDER_URI;
     }, { once: true });
   });
+}
+
+/* 가성비 픽 선정: 담은 상품들 안에서 가격(낮을수록↑)·종합별점(높을수록↑)을
+   각각 0~1로 정규화해 균형 점수(별점 0.5 + 저가 0.5)가 가장 높은 1개.
+   가격/별점이 전부 동일하면 의미 없으므로 null 반환(추천 생략). */
+function pickValuePick(items) {
+  if (!Array.isArray(items) || items.length < 2) return null;
+  const prices = items.map((p) => Number(p.price) || 0);
+  const comps = items.map((p) => Math.max(0, Math.min(5, Number(p._composite) || 0)));
+  const minP = Math.min.apply(null, prices), maxP = Math.max.apply(null, prices);
+  const minC = Math.min.apply(null, comps), maxC = Math.max.apply(null, comps);
+  // 가격도 별점도 전부 같으면 우열을 가릴 수 없음 → 추천 생략
+  if (maxP === minP && maxC === minC) return null;
+
+  let best = null, bestScore = -Infinity;
+  items.forEach((p, i) => {
+    // 가격: 최저가=1, 최고가=0 / 별점: 최고=1, 최저=0
+    const cheapScore = (maxP === minP) ? 1 : (maxP - prices[i]) / (maxP - minP);
+    const rateScore  = (maxC === minC) ? 1 : (comps[i] - minC) / (maxC - minC);
+    const score = rateScore * 0.5 + cheapScore * 0.5;
+    if (score > bestScore) { bestScore = score; best = p; }
+  });
+  return best;
+}
+
+/* 추천 한 줄용 짧은 이름 (너무 길면 말줄임) */
+function shortName(name) {
+  const s = String(name || "").trim();
+  return s.length > 22 ? s.slice(0, 21) + "…" : s;
 }
 
 /* ===== 필터 시트 ===== */
