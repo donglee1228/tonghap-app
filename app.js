@@ -126,17 +126,57 @@ function proxiedImg(url) {
   return "https://images.weserv.nl/?url=" + encodeURIComponent(url) + "&w=600&output=webp";
 }
 
-/* ===== 1단계: 진입 화면 — 빈 박스 그리드(콘텐츠 채울 자리 미리 확보) ===== */
+/* ===== 1단계: 진입 화면 — 앞 4칸 = 그룹 타일, 나머지 = 빈 칸 ===== */
+/* 그룹 타일에 짧게 넣을 이름 (네모칸 크기에 맞게) */
+const GROUP_SHORT = {
+  "남성|일반": "남성 · 일반",
+  "남성|빅사이즈": "남성 · 빅",
+  "여성|일반": "여성 · 일반",
+  "여성|빅사이즈": "여성 · 빅"
+};
+
 function buildGroupScreen() {
   const box = $("#group-choices");
   box.innerHTML = "";
   const TILE_COUNT = 18;   // 스크롤하면 더 보이게 충분히 많이
+
+  // 그룹별 (이미지 있는) 상품 개수
+  const groupCount = (g) =>
+    ALL.filter((p) => p.gender === g.gender && p.sizeClass === g.sizeClass).length;
+
   for (let i = 0; i < TILE_COUNT; i++) {
-    const tile = document.createElement("div");
-    tile.className = "blank-tile";
-    tile.setAttribute("aria-hidden", "true");
-    box.appendChild(tile);
+    const g = GROUPS[i];
+    if (g) {
+      // 앞 4칸: 실제 그룹 진입 타일
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "group-tile";
+      const shortName = GROUP_SHORT[g.gender + "|" + g.sizeClass] || g.title;
+      tile.innerHTML = `
+        <span class="gt-emoji" aria-hidden="true">${g.emoji}</span>
+        <span class="gt-name">${esc(shortName)}</span>
+        <span class="gt-badge">${groupCount(g)}개</span>`;
+      tile.addEventListener("click", () => enterGroup(g));
+      box.appendChild(tile);
+    } else {
+      // 나머지: 빈 네모칸(자리 확보)
+      const blank = document.createElement("div");
+      blank.className = "blank-tile";
+      blank.setAttribute("aria-hidden", "true");
+      box.appendChild(blank);
+    }
   }
+}
+
+/* 그룹 타일 클릭 → 종류 선택 화면으로 드릴다운 */
+function enterGroup(g) {
+  sel.gender = g.gender;
+  sel.sizeClass = g.sizeClass;
+  sel.garmentType = null;
+  const crumb = $("#crumb-group");
+  if (crumb) crumb.textContent = g.title;
+  buildCategoryScreen();
+  goTo("category");
 }
 
 /* ===== 2단계: 종류 선택 화면 (해당 그룹에 실제 있는 garmentType만) ===== */
