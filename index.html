@@ -96,6 +96,7 @@
         </div>
 
         <div class="active-filters" id="active-filters"></div>
+        <div class="sortbar" id="sortbar" role="group" aria-label="정렬 방식"></div>
         <main id="grid" class="grid" aria-live="polite"></main>
         <footer class="footer"><p>옷싹 · 가격은 변동될 수 있어요. 구매 전 다시 확인해주세요 🙏</p></footer>
       </div>
@@ -188,9 +189,11 @@
         <div class="chips" id="opt-price"></div>
         <p class="price-note" id="price-note" hidden>상품이 적어 가격 구간을 따로 나누지 않았어요.</p>
       </div>
-      <div class="sheet-group">
+      <div class="sheet-group" id="grp-mall">
         <label class="sheet-label">🛒 쇼핑몰</label>
         <div class="chips chips-wrap" id="opt-mall"></div>
+        <button class="mall-more" id="mall-more" type="button" aria-expanded="false" hidden>더보기 ▾</button>
+        <p class="price-note" id="mall-note" hidden></p>
       </div>
       <div class="sheet-group">
         <label class="sheet-label">↕️ 정렬</label>
