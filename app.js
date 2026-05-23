@@ -137,10 +137,18 @@ function buildPriceOpts(pool) {
       .forEach((v) => { PRICE_OPTS[priceLabel(v)] = v; });
 }
 
+/* ===== 정렬 옵션 (라벨=상태값) — 추천순이 기본 ===== */
+const SORT_OPTS = ["추천순", "가격 낮은순", "가격 높은순", "별점 높은순"];
+const SORT_DEFAULT = "추천순";
+
 /* ===== 상태 ===== */
 let ALL = [];          // 이미지 있는 상품만 보관
 const sel = { gender: null, sizeClass: null, garmentType: null };
-const filter = { price: "전체", malls: new Set(), sort: "종합별점순" };
+const filter = { price: "전체", malls: new Set(), sort: SORT_DEFAULT };
+/* 현재 종류 풀에 실제 존재하는 몰 목록(빈도 내림차순) — 종류 진입 시 갱신 */
+let CUR_MALLS = [];
+/* mall 칩 더보기 펼침 상태 */
+let mallExpanded = false;
 let FAVS = loadFavs();
 
 /* ===== DOM ===== */
@@ -166,8 +174,40 @@ async function init() {
 
   buildGroupScreen();
   buildSheet();
+  buildSortBar();
   bindNav();
   bindTabs();
+}
+
+/* ===== 목록 상단 정렬 바 (필터 시트와 상태 공유) ===== */
+function buildSortBar() {
+  const box = $("#sortbar");
+  if (!box) return;
+  box.innerHTML = "";
+  SORT_OPTS.forEach((val) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "sort-chip";
+    btn.textContent = val;
+    btn.dataset.val = val;
+    btn.setAttribute("aria-pressed", String(filter.sort === val));
+    btn.addEventListener("click", () => {
+      if (filter.sort === val) return;
+      filter.sort = val;
+      syncSortBar();
+      syncSheetUI();   // 시트가 떠있을 수 있으니 동기화
+      render();
+    });
+    box.appendChild(btn);
+  });
+  syncSortBar();
+}
+function syncSortBar() {
+  document.querySelectorAll("#sortbar .sort-chip").forEach((c) => {
+    const on = c.dataset.val === filter.sort;
+    c.classList.toggle("active", on);
+    c.setAttribute("aria-pressed", String(on));
+  });
 }
 
 /* ===== weserv 프록시 이미지 URL =====
@@ -285,10 +325,14 @@ function bindNav() {
   $("#sheet-close").addEventListener("click", closeSheet);
   $("#sheet-backdrop").addEventListener("click", closeSheet);
   $("#sheet-reset").addEventListener("click", () => {
-    filter.price = "전체"; filter.malls = new Set(); filter.sort = "종합별점순";
+    filter.price = "전체"; filter.malls = new Set(); filter.sort = SORT_DEFAULT;
     syncSheetUI();
+    syncSortBar();
   });
-  $("#sheet-apply").addEventListener("click", () => { closeSheet(); render(); });
+  $("#sheet-apply").addEventListener("click", () => { closeSheet(); syncSortBar(); render(); });
+
+  const moreBtn = $("#mall-more");
+  if (moreBtn) moreBtn.addEventListener("click", () => { mallExpanded = !mallExpanded; renderMallChips(); });
 
   $("#detail-close").addEventListener("click", closeDetail);
   $("#detail-backdrop").addEventListener("click", closeDetail);
@@ -326,6 +370,8 @@ function openList() {
   buildPriceOpts(currentPool());
   if (!(filter.price in PRICE_OPTS)) filter.price = "전체";  // 이전 구간이 사라졌으면 초기화
   rebuildPriceChips();
+  rebuildMallChips();   // 현재 종류의 몰만, 단일몰이면 숨김
+  syncSortBar();
   goTo("list");
   render();
 }
@@ -383,9 +429,10 @@ function applyFilters() {
     return true;
   });
 
-  if (filter.sort === "가격낮은순") list.sort((a, b) => a.price - b.price);
-  else if (filter.sort === "가격높은순") list.sort((a, b) => b.price - a.price);
-  else list.sort((a, b) => (b._composite || 0) - (a._composite || 0) || (b.rating || 0) - (a.rating || 0));
+  if (filter.sort === "가격 낮은순") list.sort((a, b) => (a.price || 0) - (b.price || 0));
+  else if (filter.sort === "가격 높은순") list.sort((a, b) => (b.price || 0) - (a.price || 0));
+  else if (filter.sort === "별점 높은순") list.sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b._composite || 0) - (a._composite || 0));
+  else list.sort((a, b) => (b._composite || 0) - (a._composite || 0) || (b.rating || 0) - (a.rating || 0)); // 추천순(기본)
 
   return list;
 }
@@ -415,11 +462,11 @@ function renderActiveFilters() {
   const tags = [];
   if (filter.price !== "전체") tags.push("💸 " + filter.price);
   if (filter.malls.size) tags.push("🛒 " + Array.from(filter.malls).join(", "));
-  tags.push("↕️ " + filter.sort);
+  if (filter.sort !== SORT_DEFAULT) tags.push("↕️ " + filter.sort);
   $("#active-filters").innerHTML = tags.map((t) => `<span class="af-tag">${esc(t)}</span>`).join("");
 }
 function filterActive() {
-  return filter.price !== "전체" || filter.malls.size > 0 || filter.sort !== "종합별점순";
+  return filter.price !== "전체" || filter.malls.size > 0 || filter.sort !== SORT_DEFAULT;
 }
 
 /* ===== 찜 탭 렌더 ===== */
@@ -459,7 +506,7 @@ function cardHTML(p) {
   const href = p.link ? esc(p.link) : "";
 
   return `
-    <article class="card" data-id="${esc(p.id)}">
+    <article class="card" data-id="${esc(p.id)}" data-rating="${Number(p.rating) || 0}" data-price="${Number(p.price) || 0}">
       <button class="heart-btn ${faved ? "on" : ""}" type="button" data-id="${esc(p.id)}" aria-label="찜하기" aria-pressed="${faved}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.2C.3 8.4 1.9 5 5.3 5c2 0 3.4 1.1 4.2 2.4C10.3 6.1 11.7 5 13.7 5c3.4 0 5 3.4 3.3 6.8C19.5 16.4 12 21 12 21z" fill="${faved ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       </button>
@@ -670,13 +717,75 @@ function onDetailKey(e) { if (e.key === "Escape") closeDetail(); }
 /* ===== 필터 시트 ===== */
 function buildSheet() {
   rebuildPriceChips();
-  // mall 칩: 상품 수 많은 몰이 앞으로 (빈도 내림차순). 동률은 가나다순.
+  rebuildMallChips();
+  makeChips("#opt-sort", SORT_OPTS, "sort");
+}
+
+/* mall 칩 기본 노출 개수 (이 이상이면 "더보기"로 접음) */
+const MALL_VISIBLE = 8;
+
+/* 현재 종류 풀에 실제 있는 몰만, 빈도 내림차순(동률은 가나다)으로 칩 생성.
+   - 몰이 1개뿐이면 mall 필터 행 자체를 숨기고 안내문구 노출 (소규모 가격필터와 동일 톤)
+   - 8개 초과면 상위 8개만 노출 + "더보기 (+N)" 토글 */
+function rebuildMallChips() {
+  const box = $("#opt-mall");
+  if (!box) return;
+  const grp = $("#grp-mall");
+  const note = $("#mall-note");
+  const moreBtn = $("#mall-more");
+
+  // 현재 컨텍스트가 정해져 있으면 그 풀, 아니면 전체 기준
+  const pool = (sel.gender && sel.sizeClass && sel.garmentType) ? currentPool() : ALL;
   const mallCount = {};
-  ALL.forEach((p) => { if (p.mall) mallCount[p.mall] = (mallCount[p.mall] || 0) + 1; });
-  const malls = Object.keys(mallCount).sort((a, b) =>
+  pool.forEach((p) => { if (p.mall) mallCount[p.mall] = (mallCount[p.mall] || 0) + 1; });
+  CUR_MALLS = Object.keys(mallCount).sort((a, b) =>
     (mallCount[b] - mallCount[a]) || a.localeCompare(b, "ko"));
-  makeChips("#opt-mall", malls, "mall");
-  makeChips("#opt-sort", ["종합별점순", "가격낮은순", "가격높은순"], "sort");
+
+  // 현재 풀에 없는 몰은 선택 해제 (유령 필터 방지)
+  Array.from(filter.malls).forEach((m) => { if (!CUR_MALLS.includes(m)) filter.malls.delete(m); });
+
+  // 단일 몰 종류 → mall 필터 무의미: 행 숨김 + 안내
+  const singleMall = CUR_MALLS.length <= 1;
+  if (grp) grp.hidden = false;            // 그룹 자체는 유지, 내부만 토글
+  if (singleMall) {
+    box.innerHTML = "";
+    box.hidden = true;
+    if (moreBtn) moreBtn.hidden = true;
+    if (note) {
+      note.hidden = false;
+      note.textContent = CUR_MALLS.length === 1
+        ? `이 종류는 '${CUR_MALLS[0]}' 한 곳에서만 팔아요. 쇼핑몰 필터는 생략했어요.`
+        : "쇼핑몰 정보가 없어 필터를 생략했어요.";
+    }
+    return;
+  }
+
+  if (note) note.hidden = true;
+  box.hidden = false;
+  mallExpanded = false;
+  renderMallChips();
+}
+
+/* mallExpanded 상태에 맞춰 칩 노출(상위 8 또는 전체) + 더보기 버튼 갱신 */
+function renderMallChips() {
+  const box = $("#opt-mall");
+  const moreBtn = $("#mall-more");
+  if (!box) return;
+  const total = CUR_MALLS.length;
+  const shown = mallExpanded ? CUR_MALLS : CUR_MALLS.slice(0, MALL_VISIBLE);
+  makeChips("#opt-mall", shown, "mall");
+
+  if (moreBtn) {
+    if (total <= MALL_VISIBLE) {
+      moreBtn.hidden = true;
+    } else {
+      moreBtn.hidden = false;
+      const rest = total - MALL_VISIBLE;
+      moreBtn.textContent = mallExpanded ? "접기 ▴" : `더보기 +${rest} ▾`;
+      moreBtn.setAttribute("aria-expanded", String(mallExpanded));
+    }
+  }
+  syncSheetUI();
 }
 
 /* 현재 PRICE_OPTS 기준으로 가격 칩 다시 그리기 (종류 진입 시마다 호출)
@@ -720,6 +829,7 @@ function syncSheetUI() {
   document.querySelectorAll("#opt-price .chip").forEach((c) => c.classList.toggle("active", c.dataset.val === filter.price));
   document.querySelectorAll("#opt-sort .chip").forEach((c) => c.classList.toggle("active", c.dataset.val === filter.sort));
   document.querySelectorAll("#opt-mall .chip").forEach((c) => c.classList.toggle("active", filter.malls.has(c.dataset.val)));
+  syncSortBar();
 }
 
 function openSheet() {
