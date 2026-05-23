@@ -719,6 +719,111 @@ body.has-compare-bar .tab-page{padding-bottom:calc(var(--nav-h) + env(safe-area-
   .cmp-pick,.cmp-hint{font-size:12.5px;}
 }
 
+/* ===== 사이클8: 비교 강화 + 정보 산식 ===== */
+/* 가성비 픽 근거 한 줄 (픽 추천 박스 안 둘째 줄) */
+.cmp-pick-why{
+  display:block;margin-top:5px;
+  font-size:12px;font-weight:600;line-height:1.45;color:var(--muted-2);
+}
+
+/* 자동 하이라이트 안내 한 줄 */
+.cmp-spotlight{
+  margin:0 0 12px;padding:9px 12px;
+  border-radius:11px;line-height:1.4;
+  font-size:12.5px;font-weight:700;color:#ffe0c2;
+  background:rgba(224,169,109,.14);
+  border:1px solid rgba(224,169,109,.40);
+}
+
+/* 차이만/전체 보기 토글 */
+.cmp-toggle{
+  display:inline-flex;gap:0;margin:0 0 12px;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:999px;padding:3px;
+}
+.cmp-tg-btn{
+  padding:7px 14px;border-radius:999px;border:none;cursor:pointer;
+  background:transparent;color:var(--muted-2);
+  font-size:12.5px;font-weight:700;transition:.14s;
+}
+.cmp-tg-btn.on{background:var(--point);color:#fff;}
+.cmp-tg-btn:active{transform:scale(.96);}
+
+/* "차이만 보기" 시 같은 값 행 접기 */
+.cmp-table.diff-only tr.row-same{display:none;}
+
+/* 자동 하이라이트: 잠깐 은은하게 펄스 (모션감소 시 끔) */
+@keyframes cmpHiPulse{
+  0%{background:rgba(176,114,255,.30);}
+  100%{background:transparent;}
+}
+.cmp-table tr.cmp-hi td{animation:cmpHiPulse 1.3s ease-out 2;}
+.cmp-table tr.cmp-hi th[scope="row"]{
+  color:#e4c9ff;box-shadow:1px 0 0 var(--border), inset 3px 0 0 var(--point);
+}
+/* 모션감소: 깜빡임 없이 정적 좌측 바만 */
+.cmp-table tr.cmp-hi-static th[scope="row"]{
+  color:#e4c9ff;box-shadow:1px 0 0 var(--border), inset 3px 0 0 var(--point);
+}
+.cmp-table tr.cmp-hi-static td{background:rgba(176,114,255,.12);}
+
+/* ===== 정보 탭: 산식 시각화 카드 ===== */
+.si-card h4.si-sub{
+  font-size:13.5px;font-weight:800;color:var(--text);
+  margin:16px 0 7px;
+}
+.si-card>p{margin-top:8px;}
+/* 가중치 도넛 + 범례 */
+.si-formula{
+  display:flex;align-items:center;gap:16px;
+  margin:14px 0 4px;padding:14px;
+  background:var(--bg);border:1px solid var(--border);border-radius:14px;
+}
+.si-donut{width:96px;height:96px;flex:0 0 auto;}
+.si-legend{display:flex;flex-direction:column;gap:10px;min-width:0;}
+.si-leg{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--text);line-height:1.4;}
+.si-leg small{color:var(--muted);font-size:11.5px;}
+.si-leg b{font-weight:800;}
+.si-dot{flex:0 0 auto;width:13px;height:13px;border-radius:50%;margin-top:3px;}
+/* 가성비 점수 막대(가격→점수 환산) */
+.si-bars{display:flex;flex-direction:column;gap:9px;margin:10px 0 2px;}
+.si-bar{display:flex;align-items:center;gap:9px;font-size:12.5px;}
+.si-bar-k{flex:0 0 76px;color:var(--muted-2);font-weight:600;}
+.si-bar-track{
+  flex:1;height:11px;border-radius:999px;
+  background:var(--bg);border:1px solid var(--border);overflow:hidden;
+}
+.si-bar-track i{
+  display:block;height:100%;border-radius:999px;
+  background:linear-gradient(90deg,#6dc2c0,#b072ff);
+}
+.si-bar-v{flex:0 0 auto;font-weight:800;color:var(--text);width:28px;text-align:right;}
+/* 후기 체크리스트 */
+.si-chk{list-style:none;display:flex;flex-direction:column;gap:7px;margin-top:2px;}
+.si-chk li{
+  font-size:13px;line-height:1.5;color:var(--muted-2);
+  padding-left:22px;position:relative;
+}
+.si-chk li::before{
+  content:"✓";position:absolute;left:2px;top:0;
+  color:#6dc2c0;font-weight:900;
+}
+.si-chk b{color:var(--text);}
+.si-note{
+  margin-top:12px;font-size:12px;line-height:1.55;color:var(--muted);
+  border-top:1px dashed var(--border);padding-top:10px;
+}
+@media (max-width:390px){
+  .si-formula{gap:12px;padding:12px;}
+  .si-donut{width:84px;height:84px;}
+  .si-bar-k{flex-basis:66px;font-size:12px;}
+}
+/* 인쇄: 비교 토글/스포트라이트는 의미 없으니 정적으로 */
+@media print{
+  .cmp-toggle{display:none;}
+  .cmp-table tr.cmp-hi td{animation:none;}
+}
+
 /* ===== 접근성: 키보드 포커스 윤곽 (마우스/터치는 표시 X) ===== */
 :focus-visible{outline:2px solid var(--point);outline-offset:2px;border-radius:8px;}
 .holo-title:focus-visible,.card-img:focus-visible{outline:none;}
@@ -739,4 +844,6 @@ body.sheet-open{overflow:hidden;}
   .img-skeleton{animation:none;}
   .card-img{transition:none;}
   .sheet{animation:none;}
+  .cmp-table tr.cmp-hi td{animation:none;}
+  .compare-bar{animation:none;}
 }

@@ -44,6 +44,15 @@
       "purpose": "maskable"
     }
   ],
+  "screenshots": [
+    {
+      "src": "og-cover.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "옷싹 - 쇼핑몰 옷값·별점·실측 사이즈를 한눈에 비교"
+    }
+  ],
   "shortcuts": [
     {
       "name": "둘러보기",

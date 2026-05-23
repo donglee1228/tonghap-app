@@ -152,6 +152,7 @@ let mallExpanded = false;
 let FAVS = loadFavs();
 let COMPARE = loadCompare();        // 비교 담은 상품 id (찜과 별개)
 const COMPARE_MAX = 4;              // 권장 최대 담기 개수
+let compareDiffOnly = false;        // 비교 뷰 "차이만 보기" 토글 (세션 동안 유지, 기본 전체 보기)
 
 /* ===== DOM ===== */
 const $ = (s) => document.querySelector(s);
@@ -180,7 +181,81 @@ async function init() {
   bindNav();
   bindTabs();
   bindCompare();
+  buildScoreInfo();
   updateCompareBar();
+}
+
+/* ===== 정보 탭: 종합별점·가성비 점수 산식 시각화 카드 (JS로 주입, index.html 미수정) =====
+   실제 산식과 일치: 가성비 점수 = (가격 정규화 ↓1~5점) , 종합별점 = 리뷰별점×0.65 + 가성비×0.35.
+   사용자 눈높이의 친근한 한국어 + 인라인 SVG/CSS 막대로 신뢰감만, 과장 없이. */
+function buildScoreInfo() {
+  const wrap = document.querySelector("#tab-info .info-wrap");
+  if (!wrap) return;
+  if (document.getElementById("score-info-card")) return;   // 중복 주입 방지
+
+  // 도넛형 가중치 그래픽용 인라인 SVG (리뷰 65% / 가성비 35%)
+  const ratio = 0.65;                // 종합별점 중 리뷰 비중
+  const C = 2 * Math.PI * 42;        // 반지름 42 원 둘레
+  const reviewLen = (C * ratio).toFixed(1);
+  const valueLen = (C * (1 - ratio)).toFixed(1);
+  const donut =
+    '<svg class="si-donut" viewBox="0 0 100 100" role="img" aria-label="종합별점 가중치: 리뷰 65퍼센트, 가성비 35퍼센트">' +
+      '<circle cx="50" cy="50" r="42" fill="none" stroke="#3a3358" stroke-width="13"/>' +
+      '<circle cx="50" cy="50" r="42" fill="none" stroke="#b072ff" stroke-width="13" stroke-linecap="round"' +
+        ' stroke-dasharray="' + reviewLen + ' ' + C.toFixed(1) + '" transform="rotate(-90 50 50)"/>' +
+      '<circle cx="50" cy="50" r="42" fill="none" stroke="#6dc2c0" stroke-width="13" stroke-linecap="round"' +
+        ' stroke-dasharray="' + valueLen + ' ' + C.toFixed(1) + '"' +
+        ' stroke-dashoffset="' + (-reviewLen) + '" transform="rotate(-90 50 50)"/>' +
+      '<text x="50" y="47" text-anchor="middle" font-size="15" font-weight="800" fill="#f3f0ff">종합</text>' +
+      '<text x="50" y="63" text-anchor="middle" font-size="11" fill="#cec7e8">별점</text>' +
+    '</svg>';
+
+  const card = document.createElement("div");
+  card.className = "info-card si-card";
+  card.id = "score-info-card";
+  card.innerHTML =
+    '<div class="info-emoji">📊</div>' +
+    '<h3>종합별점·가성비 점수는 이렇게 계산해요</h3>' +
+    '<p>옷싹 별점은 <b>실제 후기 평점</b>에다가, 같은 종류끼리 비교한 <b>가성비</b>를 살짝 섞어서 매겨요. 비싸기만 하면 깎이고, 싸고 평 좋으면 올라가는 구조예요.</p>' +
+
+    '<div class="si-formula">' +
+      donut +
+      '<div class="si-legend">' +
+        '<div class="si-leg"><span class="si-dot" style="background:#b072ff"></span><span><b>리뷰 평점</b> 65%<br><small>실착 후기 별점 그대로</small></span></div>' +
+        '<div class="si-leg"><span class="si-dot" style="background:#6dc2c0"></span><span><b>가성비 점수</b> 35%<br><small>같은 종류 안 가격 비교</small></span></div>' +
+      '</div>' +
+    '</div>' +
+
+    '<h4 class="si-sub">💸 가성비 점수는요</h4>' +
+    '<p>같은 종류(예: 남성 일반 바람막이)끼리 모아놓고, <b>제일 싼 옷은 5점</b>, <b>제일 비싼 옷은 1점</b>으로 가격을 1~5점으로 환산해요. 그 사이는 비례해서 나눠 갖고요.</p>' +
+    '<div class="si-bars" aria-hidden="true">' +
+      '<div class="si-bar"><span class="si-bar-k">제일 싼 옷</span><span class="si-bar-track"><i style="width:100%"></i></span><span class="si-bar-v">5.0</span></div>' +
+      '<div class="si-bar"><span class="si-bar-k">중간 가격</span><span class="si-bar-track"><i style="width:60%"></i></span><span class="si-bar-v">3.0</span></div>' +
+      '<div class="si-bar"><span class="si-bar-k">제일 비싼 옷</span><span class="si-bar-track"><i style="width:20%"></i></span><span class="si-bar-v">1.0</span></div>' +
+    '</div>' +
+
+    '<h4 class="si-sub">⭐ 후기 평점은 이런 걸 봐요</h4>' +
+    '<ul class="si-chk">' +
+      '<li>실물이 사진보다 <b>괜찮다</b>는 후기</li>' +
+      '<li>원단이 <b>질 좋고 튼튼</b>하다는 평</li>' +
+      '<li>가격 대비 <b>잘 샀다(쌈)</b>는 만족도</li>' +
+      '<li>사이즈·핏이 설명대로인지</li>' +
+    '</ul>' +
+    '<p class="si-note">점수는 옷 고르는 걸 도와주는 참고용이에요. 최종 판단은 후기랑 실측 보고 직접 해주세요 🙂</p>';
+
+  // 종합별점 안내 카드(⭐) 바로 뒤에 끼워넣기 — 없으면 맨 끝 직전(문의 카드 앞)에 추가
+  const afterCard = Array.from(wrap.querySelectorAll(".info-card")).find((c) => {
+    const h = c.querySelector("h3");
+    return h && h.textContent.indexOf("종합별점") !== -1;
+  });
+  if (afterCard && afterCard.nextSibling) {
+    wrap.insertBefore(card, afterCard.nextSibling);
+  } else if (afterCard) {
+    wrap.appendChild(card);
+  } else {
+    const foot = wrap.querySelector(".info-foot");
+    if (foot) wrap.insertBefore(card, foot); else wrap.appendChild(card);
+  }
 }
 
 /* ===== 목록 상단 정렬 바 (필터 시트와 상태 공유) ===== */
@@ -1028,14 +1103,14 @@ function renderCompareView() {
     return cell(`<span class="ship-mall" style="background:${mc}">${esc(p.mall || "-")}</span>`);
   }).join("")}</tr>`);
   // 가격 (최저가 강조)
-  rows.push(`${trOpen(rowClass(items.map((p) => Number(p.price) || "")))}<th scope="row">가격</th>${items.map((p) => {
+  rows.push(`${trOpen(rowClass(items.map((p) => Number(p.price) || "")) + " js-row-price")}<th scope="row">가격</th>${items.map((p) => {
     const pr = Number(p.price) || 0;
     const best = isFinite(minPrice) && pr === minPrice;
     const txt = pr ? pr.toLocaleString("ko-KR") + "원" : "-";
     return cell(`<span class="cmp-price">${esc(txt)}</span>${best ? `<span class="cmp-best">최저가</span>` : ""}`, best ? "is-best" : "");
   }).join("")}</tr>`);
   // 종합별점 (최고 강조)
-  rows.push(`${trOpen(rowClass(items.map((p) => Math.max(0, Math.min(5, Number(p._composite) || 0)).toFixed(1))))}<th scope="row">종합별점</th>${items.map((p) => {
+  rows.push(`${trOpen(rowClass(items.map((p) => Math.max(0, Math.min(5, Number(p._composite) || 0)).toFixed(1))) + " js-row-rate")}<th scope="row">종합별점</th>${items.map((p) => {
     const comp = Math.max(0, Math.min(5, Number(p._composite) || 0));
     const best = maxComp > 0 && comp === maxComp;
     return cell(`<span class="cmp-rate">⭐ ${comp.toFixed(1)}</span>${best ? `<span class="cmp-best">최고</span>` : ""}`, best ? "is-best" : "");
@@ -1062,22 +1137,56 @@ function renderCompareView() {
       : `<span class="cmp-meas">-</span>`);
   }).join("")}</tr>`);
 
-  // 상단 안내: 2개↑면 가성비 픽 한 줄, 1개면 "더 담으면 좋아요" 힌트
+  // 상단 안내: 2개↑면 가성비 픽 한 줄(+근거), 1개면 "더 담으면 좋아요" 힌트
   let topNote = "";
   if (items.length >= 2 && bestPick) {
-    topNote = `<div class="cmp-pick">💡 이 중엔 <b>${esc(shortName(bestPick.name))}</b>이 가성비 갓벽이에요!</div>`;
+    const reason = pickReason(items, bestPick);
+    topNote = `<div class="cmp-pick">💡 이 중엔 <b>${esc(shortName(bestPick.name))}</b>이 가성비 갓벽이에요!` +
+      (reason ? `<span class="cmp-pick-why">${esc(reason)}</span>` : "") +
+      `</div>`;
   } else if (items.length === 1) {
     topNote = `<div class="cmp-hint">🙂 하나만 담겼어요. <b>2개 이상</b> 담으면 가격·별점을 나란히 비교할 수 있어요!</div>`;
   }
 
+  // 자동 하이라이트: 가장 차이 큰 항목(가격 폭 vs 별점 폭) 한 줄 + 해당 행 잠깐 강조
+  const hi = pickBiggestDiff(items);
+
+  // "차이만 보기" 토글 — 같은 값 행(row-same)을 접어 화면 절약. 2개↑ 비교일 때만 노출.
+  const hasSameRow = rows.some((r) => r.indexOf("row-same") !== -1);
+  const showToggle = items.length >= 2 && hasSameRow;
+  const toggleHTML = showToggle
+    ? `<div class="cmp-toggle" role="group" aria-label="비교 표 보기 방식">
+         <button type="button" class="cmp-tg-btn ${compareDiffOnly ? "" : "on"}" data-diff="0" aria-pressed="${!compareDiffOnly}">전체 보기</button>
+         <button type="button" class="cmp-tg-btn ${compareDiffOnly ? "on" : ""}" data-diff="1" aria-pressed="${compareDiffOnly}">차이만 보기</button>
+       </div>`
+    : "";
+
   body.innerHTML = `
     ${topNote}
+    ${hi ? `<div class="cmp-spotlight" data-hi-row="${esc(hi.rowKey)}">${esc(hi.msg)}</div>` : ""}
+    ${toggleHTML}
     <div class="cmp-scroll">
-      <table class="cmp-table">
+      <table class="cmp-table ${compareDiffOnly && showToggle ? "diff-only" : ""}">
         <thead><tr><th scope="col" class="cmp-corner">${items.length}개 비교</th>${thumbRow}</tr></thead>
         <tbody>${rows.join("")}</tbody>
       </table>
     </div>`;
+
+  // "차이만 보기" 토글 바인딩 (세션 동안 상태 유지)
+  body.querySelectorAll(".cmp-tg-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const want = btn.dataset.diff === "1";
+      if (want === compareDiffOnly) return;
+      compareDiffOnly = want;
+      const tbl = body.querySelector(".cmp-table");
+      if (tbl) tbl.classList.toggle("diff-only", compareDiffOnly);
+      body.querySelectorAll(".cmp-tg-btn").forEach((b) => {
+        const on = (b.dataset.diff === "1") === compareDiffOnly;
+        b.classList.toggle("on", on);
+        b.setAttribute("aria-pressed", String(on));
+      });
+    });
+  });
 
   // 개별 제거 버튼
   body.querySelectorAll("[data-cmp-remove]").forEach((btn) => {
@@ -1099,6 +1208,22 @@ function renderCompareView() {
       img.src = PLACEHOLDER_URI;
     }, { once: true });
   });
+
+  // 자동 하이라이트: 가장 차이 큰 행을 잠깐 은은하게 강조 (모션감소 존중)
+  if (hi && hi.rowKey) {
+    const tr = body.querySelector("tr.js-row-" + hi.rowKey);
+    if (tr) {
+      const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduce) {
+        // 모션 줄이기: 깜빡임 없이 정적 표식만 잠깐 유지 후 제거
+        tr.classList.add("cmp-hi-static");
+        setTimeout(() => tr.classList.remove("cmp-hi-static"), 2600);
+      } else {
+        tr.classList.add("cmp-hi");
+        setTimeout(() => tr.classList.remove("cmp-hi"), 2600);
+      }
+    }
+  }
 }
 
 /* 가성비 픽 선정: 담은 상품들 안에서 가격(낮을수록↑)·종합별점(높을수록↑)을
@@ -1128,6 +1253,90 @@ function pickValuePick(items) {
 function shortName(name) {
   const s = String(name || "").trim();
   return s.length > 22 ? s.slice(0, 21) + "…" : s;
+}
+
+/* 가성비 픽 근거 한 줄: 담은 상품들 안에서 픽의 가격 순위·별점(종합) 순위를 계산해
+   왜 가성비 갓벽인지 친근하게 설명. (1=가장 쌈/가장 높음)
+   - 가격은 낮을수록 좋은 순위, 별점은 높을수록 좋은 순위
+   - 동점은 같은 순위로 묶어 계산 */
+function pickReason(items, pick) {
+  if (!Array.isArray(items) || items.length < 2 || !pick) return "";
+  const n = items.length;
+  const price = (p) => Number(p.price) || 0;
+  const comp = (p) => Math.max(0, Math.min(5, Number(p._composite) || 0));
+
+  // 가격 순위 (낮은 가격 = 1위). 동점은 같은 순위.
+  const myPrice = price(pick);
+  const cheaperCnt = items.filter((p) => price(p) < myPrice).length;
+  const priceRank = cheaperCnt + 1;
+  // 별점 순위 (높은 별점 = 1위)
+  const myComp = comp(pick);
+  const higherCnt = items.filter((p) => comp(p) > myComp).length;
+  const rateRank = higherCnt + 1;
+
+  const isCheapest = priceRank === 1;
+  const isTopRated = rateRank === 1;
+  const cheapTop = priceRank <= Math.ceil(n / 2);   // 가격 상위권(저렴한 쪽)
+  const rateTop = rateRank <= Math.ceil(n / 2);      // 별점 상위권
+
+  // 케이스별 친근한 근거 문구
+  if (isCheapest && isTopRated) {
+    return "제일 싼데 별점도 제일 높아서, 두말할 거 없죠!";
+  }
+  if (isCheapest && rateTop) {
+    return `최저가에 별점도 ${rateRank}위라 만족도 좋아요.`;
+  }
+  if (isTopRated && cheapTop) {
+    return `별점 1위인데 가격은 ${priceRank}위로 저렴한 편이라 효율 최고예요.`;
+  }
+  if (isCheapest) {
+    return "이 중 제일 저렴해서 부담이 제일 적어요.";
+  }
+  if (isTopRated) {
+    return `가격은 ${priceRank}위지만 별점이 제일 높아서 후회 적은 선택이에요.`;
+  }
+  // 일반: 가격·별점 순위를 솔직하게 풀어줌
+  if (priceRank < rateRank) {
+    return `가격은 ${priceRank}위인데 별점은 ${rateRank}위라, 값 대비 만족도가 좋아요.`;
+  }
+  if (rateRank < priceRank) {
+    return `별점은 ${rateRank}위인데 가격은 ${priceRank}위라, 가성비 균형이 제일 좋아요.`;
+  }
+  return `가격 ${priceRank}위·별점 ${rateRank}위로 균형이 제일 좋아요.`;
+}
+
+/* 자동 하이라이트: 가격 폭과 별점 폭 중 "상대적으로 더 큰 차이"가 나는 항목 선정.
+   - 가격: (최대-최소)/최대  / 별점: (최대-최소)/5  로 정규화해 비교
+   - 차이가 거의 없으면 null (강조 생략) */
+function pickBiggestDiff(items) {
+  if (!Array.isArray(items) || items.length < 2) return null;
+  const prices = items.map((p) => Number(p.price) || 0).filter((v) => v > 0);
+  const comps = items.map((p) => Math.max(0, Math.min(5, Number(p._composite) || 0)));
+
+  let priceSpread = 0, priceGap = 0;
+  if (prices.length >= 2) {
+    const minP = Math.min.apply(null, prices), maxP = Math.max.apply(null, prices);
+    priceGap = maxP - minP;
+    priceSpread = maxP > 0 ? priceGap / maxP : 0;
+  }
+  let rateSpread = 0, rateGap = 0;
+  if (comps.length >= 2) {
+    const minC = Math.min.apply(null, comps), maxC = Math.max.apply(null, comps);
+    rateGap = maxC - minC;
+    rateSpread = rateGap / 5;
+  }
+
+  // 둘 다 사실상 차이 없음 → 강조 생략
+  if (priceSpread < 0.08 && rateSpread < 0.06) return null;
+
+  if (priceSpread >= rateSpread) {
+    const man = (priceGap / 10000);
+    const gapTxt = priceGap >= 10000
+      ? (Number.isInteger(man) ? man : man.toFixed(1)) + "만원"
+      : priceGap.toLocaleString("ko-KR") + "원";
+    return { rowKey: "price", msg: `💰 가격 차이가 제일 커요 (최대 ${gapTxt} 차이)` };
+  }
+  return { rowKey: "rate", msg: `⭐ 종합별점 차이가 제일 커요 (최대 ${rateGap.toFixed(1)}점 차이)` };
 }
 
 /* ===== 필터 시트 ===== */
