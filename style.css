@@ -177,12 +177,12 @@ button{font-family:inherit;color:inherit;}
 }
 .domain-tile{
   aspect-ratio:auto;
-  min-height:124px;
-  gap:7px;
-  padding:16px 8px;
+  min-height:94px;
+  gap:6px;
+  padding:12px 8px;
 }
-.domain-tile .gt-emoji{font-size:38px;}
-.domain-tile .gt-name{font-size:14px;}
+.domain-tile .gt-emoji{font-size:31px;}
+.domain-tile .gt-name{font-size:13px;}
 .domain-tile .gt-count{font-size:11px;padding:3px 9px;}
 
 /* 미래 콘텐츠용 빈 placeholder 박스 (반투명, 클릭 무반응) */

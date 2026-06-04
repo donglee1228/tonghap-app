@@ -82,38 +82,178 @@ function overseasIcon(mall) {
   return (mall === "알리익스프레스" || mall === "테무") ? "✈️" : "🚚";
 }
 
-/* ===== 도메인 정의 (3대 도메인) — 순서 고정 ===== */
-const DOMAINS = [
-  { key: "의류",     emoji: "👕", name: "옷",       desc: "성별·사이즈별 의류" },
-  { key: "음식",     emoji: "🍱", name: "음식",     desc: "1인가구 간편식·꿀템" },
-  { key: "생활용품", emoji: "🧹", name: "생활용품", desc: "원룸 살림 꿀템" }
+/* ============================================================
+   ===== DOMAIN_CONFIG 레지스트리 (도메인을 "데이터"로 정의) =====
+   ============================================================
+   향후 도메인/카테고리 추가는 이 레지스트리에 엔트리/맵만 추가하면 끝.
+   각 엔트리:
+     key          : 상품의 domain 값(판정 기준)
+     emoji,title  : 홈 패널 표시
+     name         : 짧은 이름(홈 타일)
+     desc         : 보조 설명
+     categoryKey  : 상품의 카테고리 필드명(garmentType/foodCategory/roomCategory/
+                    healthCategory/beautyCategory/techCategory/fitCategory)
+     scoreFields  : [{field,label,weight}] 종합별점에 들어가는 점수 항목들
+     valueWeight  : 가성비(같은 카테고리 풀 정규화) 비중
+     extraFields  : 카드/상세에 노출할 보조필드 [{key,icon,label,where}]
+                      where: "card"=카드 보조줄에도, "detail"=상세에만
+     defaultEmoji : 카테고리 이모지 맵에 없을 때 쓸 기본 이모지
+     special      : "cloth"=의류 특수 흐름(성별×사이즈, rating 단일점수)
+   주의: scoreFields.weight 합 + valueWeight = 1.0 이 되도록 둔다. */
+const DOMAIN_CONFIG = [
+  {
+    key: "의류", emoji: "👕", name: "옷", title: "👕 옷", desc: "성별·사이즈별 의류",
+    categoryKey: "garmentType", special: "cloth", defaultEmoji: "👚",
+    // 의류는 rating 단일 점수 특수 처리(아래 computeComposite에서 분기). 표기용으로만 둠.
+    scoreFields: [{ field: "rating", label: "리뷰", weight: 0.65 }],
+    valueWeight: 0.35,
+    extraFields: []
+  },
+  {
+    key: "음식", emoji: "🍱", name: "음식", title: "🍱 음식", desc: "1인가구 간편식·꿀템",
+    categoryKey: "foodCategory", defaultEmoji: "🍱",
+    scoreFields: [
+      { field: "scoreTaste",   label: "맛",   weight: 0.40 },
+      { field: "scoreSatisfy", label: "만족", weight: 0.35 }
+    ],
+    valueWeight: 0.25,
+    extraFields: [{ key: "unitNote", icon: "🏷️", label: "개당·단가", where: "card" }]
+  },
+  {
+    key: "생활용품", emoji: "🧹", name: "생활용품", title: "🧹 생활용품", desc: "원룸 살림 꿀템",
+    categoryKey: "roomCategory", defaultEmoji: "🧹",
+    scoreFields: [
+      { field: "scoreSafety",  label: "안전", weight: 0.35 },
+      { field: "scoreSatisfy", label: "만족", weight: 0.30 },
+      { field: "scoreSpace",   label: "공간", weight: 0.15 }
+    ],
+    valueWeight: 0.20,
+    extraFields: [{ key: "safetyNote", icon: "🛡️", label: "안전·내구 근거", where: "card" }]
+  },
+  {
+    key: "건강", emoji: "💊", name: "건강", title: "💊 건강·영양제", desc: "영양제·건강식품 꿀템",
+    categoryKey: "healthCategory", defaultEmoji: "💊",
+    scoreFields: [
+      { field: "scoreIngredient", label: "성분", weight: 0.40 },
+      { field: "scoreSatisfy",    label: "만족", weight: 0.35 }
+    ],
+    valueWeight: 0.25,
+    extraFields: [
+      { key: "unitNote",       icon: "🏷️", label: "1일분·단가", where: "card" },
+      { key: "ingredientNote", icon: "🧪", label: "성분·함량",   where: "detail" }
+    ]
+  },
+  {
+    key: "뷰티", emoji: "🧴", name: "뷰티", title: "🧴 뷰티·그루밍", desc: "남성 스킨케어·면도·헤어",
+    categoryKey: "beautyCategory", defaultEmoji: "🧴",
+    scoreFields: [
+      { field: "scoreEffect",  label: "효과", weight: 0.40 },
+      { field: "scoreSatisfy", label: "만족", weight: 0.35 }
+    ],
+    valueWeight: 0.25,
+    extraFields: [
+      { key: "skinNote", icon: "🧴", label: "피부타입·성분", where: "card" },
+      { key: "unitNote", icon: "🏷️", label: "용량당 단가",   where: "detail" }
+    ]
+  },
+  {
+    key: "디지털", emoji: "🔌", name: "디지털", title: "🔌 디지털·가젯", desc: "자취 남자 필수 가젯",
+    categoryKey: "techCategory", defaultEmoji: "🔌",
+    scoreFields: [
+      { field: "scorePerf",    label: "성능", weight: 0.40 },
+      { field: "scoreSatisfy", label: "만족", weight: 0.35 }
+    ],
+    valueWeight: 0.25,
+    extraFields: [{ key: "specNote", icon: "⚙️", label: "핵심 스펙", where: "card" }]
+  },
+  {
+    key: "운동", emoji: "🏋️", name: "운동", title: "🏋️ 운동·홈트", desc: "홈트·헬스 소품·보충제",
+    categoryKey: "fitCategory", defaultEmoji: "🏋️",
+    scoreFields: [
+      { field: "scoreQuality", label: "품질", weight: 0.40 },
+      { field: "scoreSatisfy", label: "만족", weight: 0.35 }
+    ],
+    valueWeight: 0.25,
+    extraFields: [
+      { key: "specNote", icon: "⚙️", label: "스펙·재질", where: "card" },
+      { key: "unitNote", icon: "🏷️", label: "회당 단가", where: "detail" }
+    ]
+  }
 ];
+
+/* 레지스트리 빠른 조회용 맵 (key → config) */
+const DOMAIN_MAP = {};
+DOMAIN_CONFIG.forEach((d) => { DOMAIN_MAP[d.key] = d; });
+
+/* 홈 패널 노출 순서(=레지스트리 순서). 향후 추가도 자동 반영. */
+const DOMAINS = DOMAIN_CONFIG;
+
+/* 도메인 판정에 쓰는 별칭(옛 데이터 호환): 옛 "원룸" → 생활용품 */
+const DOMAIN_ALIAS = { "원룸": "생활용품" };
+
 /* 상품의 도메인 판정 (의류는 domain 없으면 "의류"로 간주, 옛 "원룸"도 생활용품으로) */
 function domainOf(p) {
-  const d = (p && p.domain) ? String(p.domain).trim() : "";
-  if (d === "음식") return "음식";
-  if (d === "생활용품" || d === "원룸") return "생활용품";
-  return "의류";
+  let d = (p && p.domain) ? String(p.domain).trim() : "";
+  if (DOMAIN_ALIAS[d]) d = DOMAIN_ALIAS[d];
+  return DOMAIN_MAP[d] ? d : "의류";
 }
-/* 도메인별 카테고리 키 필드명 (의류는 그룹 흐름이라 별도) */
-function categoryField(domain) {
-  if (domain === "음식") return "foodCategory";
-  if (domain === "생활용품") return "roomCategory";
-  return "garmentType";
-}
+/* 도메인 config 가져오기 (없으면 의류) */
+function domainCfg(domain) { return DOMAIN_MAP[domain] || DOMAIN_MAP["의류"]; }
+/* 도메인별 카테고리 키 필드명 */
+function categoryField(domain) { return domainCfg(domain).categoryKey; }
 
-/* ===== 음식 카테고리 순서/이모지 ===== */
-const FOOD_ORDER = ["즉석밥·간편식", "라면·면류", "냉동식품", "단백질·계란·가공육", "국·찌개·반찬", "간식·안주", "음료·커피·물", "조미료·소스·기름"];
-const FOOD_EMOJI = {
-  "즉석밥·간편식": "🍚", "라면·면류": "🍜", "냉동식품": "🧊", "단백질·계란·가공육": "🍗",
-  "국·찌개·반찬": "🍲", "간식·안주": "🍪", "음료·커피·물": "☕", "조미료·소스·기름": "🧂"
+/* ============================================================
+   ===== 카테고리 순서/이모지 맵 (도메인 categoryKey 기준) =====
+   ============================================================
+   신규 카테고리는 해당 맵에 추가만 하면 자동 노출. 맵에 없는 카테고리는
+   순서 끝으로 밀고, 이모지는 도메인 defaultEmoji 사용. */
+const CATEGORY_ORDER = {
+  garmentType:    ["바람막이", "청바지", "티셔츠", "아웃도어팬츠", "져지", "트레이닝복",
+                   "후드·맨투맨", "셔츠·니트", "패딩·코트", "속옷·양말·홈웨어"],
+  foodCategory:   ["즉석밥·간편식", "라면·면류", "냉동식품", "단백질·계란·가공육", "국·찌개·반찬", "간식·안주", "음료·커피·물", "조미료·소스·기름"],
+  roomCategory:   ["조명", "수납·정리", "멀티탭·전기", "행거·건조", "벽선반·거치", "청소용품", "주방용품·조리도구", "욕실·위생", "세탁·세제", "소형가전"],
+  healthCategory: ["마그네슘", "오메가3", "종합비타민", "비타민D", "유산균(프로바이오틱스)", "밀크씨슬(간)", "아연·미네랄", "루테인(눈)", "수면(테아닌·멜라토닌)"],
+  beautyCategory: ["스킨·로션·올인원", "에센스·세럼", "선크림", "클렌징·폼", "토너·패드", "면도·셰이빙", "헤어·스타일링", "샴푸·바디워시", "데오드란트·향", "립밤·핸드바디"],
+  techCategory:   ["보조배터리", "충전기·멀티충전", "케이블", "블루투스 이어폰", "마우스·키보드", "모니터·받침대", "USB허브·독·메모리"],
+  fitCategory:    ["덤벨·중량", "폼롤러·마사지", "요가매트", "푸쉬업·철봉·밴드", "프로틴·보충제", "쉐이커·소품"]
 };
-/* ===== 생활용품 카테고리 순서/이모지 ===== */
-const ROOM_ORDER = ["조명", "수납·정리", "멀티탭·전기", "행거·건조", "벽선반·거치", "청소용품", "주방용품·조리도구", "욕실·위생", "세탁·세제", "소형가전"];
-const ROOM_EMOJI = {
-  "조명": "💡", "수납·정리": "📦", "멀티탭·전기": "🔌", "행거·건조": "🧺", "벽선반·거치": "🪟",
-  "청소용품": "🧹", "주방용품·조리도구": "🍳", "욕실·위생": "🚿", "세탁·세제": "🧼", "소형가전": "🍳"
+const CATEGORY_EMOJI = {
+  garmentType: {
+    "바람막이": "🧥", "청바지": "👖", "티셔츠": "👕", "아웃도어팬츠": "🥾", "져지": "🏃",
+    "트레이닝복": "🩳", "후드·맨투맨": "👕", "셔츠·니트": "👔", "패딩·코트": "🧥", "속옷·양말·홈웨어": "🧦"
+  },
+  foodCategory: {
+    "즉석밥·간편식": "🍚", "라면·면류": "🍜", "냉동식품": "🧊", "단백질·계란·가공육": "🍗",
+    "국·찌개·반찬": "🍲", "간식·안주": "🍪", "음료·커피·물": "☕", "조미료·소스·기름": "🧂"
+  },
+  roomCategory: {
+    "조명": "💡", "수납·정리": "📦", "멀티탭·전기": "🔌", "행거·건조": "🧺", "벽선반·거치": "🪟",
+    "청소용품": "🧹", "주방용품·조리도구": "🍳", "욕실·위생": "🚿", "세탁·세제": "🧼", "소형가전": "🍳"
+  },
+  healthCategory: {
+    "마그네슘": "💊", "오메가3": "🐟", "종합비타민": "💊", "비타민D": "☀️", "유산균(프로바이오틱스)": "🦠",
+    "밀크씨슬(간)": "🌿", "아연·미네랄": "🧱", "루테인(눈)": "👁️", "수면(테아닌·멜라토닌)": "😴"
+  },
+  beautyCategory: {
+    "스킨·로션·올인원": "🧴", "에센스·세럼": "💧", "선크림": "🌞", "클렌징·폼": "🧼", "토너·패드": "🧫",
+    "면도·셰이빙": "🪒", "헤어·스타일링": "💈", "샴푸·바디워시": "🚿", "데오드란트·향": "🌬️", "립밤·핸드바디": "💄"
+  },
+  techCategory: {
+    "보조배터리": "🔋", "충전기·멀티충전": "🔌", "케이블": "🪢", "블루투스 이어폰": "🎧",
+    "마우스·키보드": "🖱️", "모니터·받침대": "🖥️", "USB허브·독·메모리": "💾"
+  },
+  fitCategory: {
+    "덤벨·중량": "🏋️", "폼롤러·마사지": "💆", "요가매트": "🧘", "푸쉬업·철봉·밴드": "💪",
+    "프로틴·보충제": "🥤", "쉐이커·소품": "🧴"
+  }
 };
+/* 카테고리 정렬 순서 가져오기 (없으면 빈 배열) */
+function categoryOrderOf(domain) { return CATEGORY_ORDER[categoryField(domain)] || []; }
+/* 카테고리 이모지 (없으면 도메인 기본 이모지) */
+function categoryEmoji(domain, cat) {
+  const map = CATEGORY_EMOJI[categoryField(domain)] || {};
+  return map[cat] || domainCfg(domain).defaultEmoji || "🛒";
+}
 
 /* ===== 그룹(성별+사이즈) 정의 — 순서 고정 (남성 먼저) ===== */
 const GROUPS = [
@@ -123,14 +263,7 @@ const GROUPS = [
   { gender: "여성", sizeClass: "빅사이즈", emoji: "👩‍🦰", title: "여성 · 빅사이즈 (70kg↑)",  desc: "큰 체형 여성 추천" }
 ];
 
-/* ===== 종류(garmentType) 정렬 순서 + 이모지 ===== */
-const GARMENT_ORDER = ["바람막이", "청바지", "티셔츠", "아웃도어팬츠", "져지", "트레이닝복",
-  "후드·맨투맨", "셔츠·니트", "패딩·코트", "속옷·양말·홈웨어"];
-const GARMENT_EMOJI = {
-  "바람막이": "🧥", "청바지": "👖", "티셔츠": "👕",
-  "아웃도어팬츠": "🥾", "져지": "🏃", "트레이닝복": "🩳",
-  "후드·맨투맨": "👕", "셔츠·니트": "👔", "패딩·코트": "🧥", "속옷·양말·홈웨어": "🧦"
-};
+/* (종류/카테고리 순서·이모지는 위 CATEGORY_ORDER / CATEGORY_EMOJI 레지스트리로 통합됨) */
 
 /* 가격 필터: 현재 풀(선택된 종류)의 분포로 동적 생성된다. "전체"는 항상 첫 칸. */
 let PRICE_OPTS = { "전체": Infinity };
@@ -462,7 +595,7 @@ function enterDomain(domainKey) {
   sel.category = null;
   sel.gender = null; sel.sizeClass = null; sel.garmentType = null;
 
-  if (domainKey === "의류") {
+  if (domainCfg(domainKey).special === "cloth") {
     buildClothGroupScreen();
     goTo("clothgroup");
   } else {
@@ -510,24 +643,28 @@ function buildCategoryScreen() {
   box.innerHTML = "";
   const qEl = $("#category-q");
 
-  if (sel.domain === "의류") {
+  const cfg = domainCfg(sel.domain);
+
+  // 의류: 현재 성별·사이즈 그룹의 garmentType (특수 흐름)
+  if (cfg.special === "cloth") {
     if (qEl) qEl.textContent = "어떤 옷 보실래요?";
     const crumb = $("#crumb-group");
     const g = GROUPS.find((x) => x.gender === sel.gender && x.sizeClass === sel.sizeClass);
     if (crumb && g) crumb.textContent = g.title;
 
     const pool = ALL.filter((p) => domainOf(p) === "의류" && p.gender === sel.gender && p.sizeClass === sel.sizeClass);
+    const order = categoryOrderOf("의류");
     const counts = {};
     pool.forEach((p) => { counts[p.garmentType] = (counts[p.garmentType] || 0) + 1; });
-    const types = GARMENT_ORDER.filter((t) => counts[t] > 0)
-      .concat(Object.keys(counts).filter((t) => t && GARMENT_ORDER.indexOf(t) === -1));
+    const types = order.filter((t) => counts[t] > 0)
+      .concat(Object.keys(counts).filter((t) => t && order.indexOf(t) === -1));
 
     if (!types.length) {
       box.innerHTML = `<div class="empty"><span class="emoji">🫥</span><p>이 분류엔 아직 옷이 없어요.</p></div>`;
       return;
     }
     types.forEach((t) => {
-      box.appendChild(choiceBtn(GARMENT_EMOJI[t] || "👚", t, `${counts[t]}개`, () => {
+      box.appendChild(choiceBtn(categoryEmoji("의류", t), t, `${counts[t]}개`, () => {
         sel.garmentType = t;
         sel.category = t;
         openList();
@@ -536,15 +673,15 @@ function buildCategoryScreen() {
     return;
   }
 
-  // 음식 / 생활용품
-  const isFood = sel.domain === "음식";
-  if (qEl) qEl.textContent = isFood ? "뭐 드실래요?" : "뭐가 필요하세요?";
+  // 그 외 모든 도메인 — 레지스트리 기반 일반화(카테고리 = categoryKey 필드)
+  const qByDomain = { "음식": "뭐 드실래요?", "건강": "어디에 좋은 거 찾아요?", "뷰티": "뭐 발라볼까요?",
+                      "디지털": "뭐가 필요하세요?", "운동": "뭐로 운동해볼까요?" };
+  if (qEl) qEl.textContent = qByDomain[sel.domain] || "뭐가 필요하세요?";
   const crumb = $("#crumb-group");
-  if (crumb) crumb.textContent = (isFood ? "🍱 음식" : "🧹 생활용품");
+  if (crumb) crumb.textContent = `${cfg.emoji} ${cfg.name}`;
 
-  const field = categoryField(sel.domain);
-  const order = isFood ? FOOD_ORDER : ROOM_ORDER;
-  const emojiMap = isFood ? FOOD_EMOJI : ROOM_EMOJI;
+  const field = cfg.categoryKey;
+  const order = categoryOrderOf(sel.domain);
 
   const pool = ALL.filter((p) => domainOf(p) === sel.domain);
   const counts = {};
@@ -557,7 +694,7 @@ function buildCategoryScreen() {
     return;
   }
   cats.forEach((c) => {
-    box.appendChild(choiceBtn(emojiMap[c] || "🛒", c, `${counts[c]}개`, () => {
+    box.appendChild(choiceBtn(categoryEmoji(sel.domain, c), c, `${counts[c]}개`, () => {
       sel.category = c;
       sel.garmentType = null;
       openList();
@@ -649,7 +786,7 @@ function openList() {
   render();
 }
 function listTitle() {
-  if (sel.domain === "의류") return `${groupTitle()} · ${sel.garmentType}`;
+  if (domainCfg(sel.domain).special === "cloth") return `${groupTitle()} · ${sel.garmentType}`;
   return sel.category || sel.domain || "상품";
 }
 function groupTitle() {
@@ -661,7 +798,7 @@ function groupTitle() {
    - 의류: 같은 성별+사이즈+종류
    - 음식/생활용품: 같은 카테고리(foodCategory/roomCategory) */
 function currentPool() {
-  if (sel.domain === "의류") {
+  if (domainCfg(sel.domain).special === "cloth") {
     return ALL.filter((p) =>
       domainOf(p) === "의류" &&
       p.gender === sel.gender &&
@@ -676,7 +813,7 @@ function currentPool() {
 /* 어떤 상품이 속한 "가성비 정규화 풀" (자기 카테고리 동료들) */
 function poolOf(p) {
   const dom = domainOf(p);
-  if (dom === "의류") {
+  if (domainCfg(dom).special === "cloth") {
     return ALL.filter((x) => domainOf(x) === "의류" &&
       x.gender === p.gender && x.sizeClass === p.sizeClass && x.garmentType === p.garmentType);
   }
@@ -687,10 +824,10 @@ function poolOf(p) {
 /* 점수(1~5) 안전 변환 */
 function clampScore(v) { return Math.max(0, Math.min(5, Number(v) || 0)); }
 
-/* ===== 종합 별점 계산 (도메인별 산식 분기, 같은 카테고리 풀 안에서 가성비) =====
-   - 의류:     rating×0.65 + 가성비×0.35
-   - 음식:     scoreTaste×0.40 + scoreSatisfy×0.35 + 가성비×0.25
-   - 생활용품: scoreSafety×0.35 + scoreSatisfy×0.30 + 가성비×0.20 + scoreSpace×0.15
+/* ===== 종합 별점 계산 (DOMAIN_CONFIG 레지스트리 기반, 같은 카테고리 풀 안에서 가성비) =====
+   종합 = Σ(scoreFields[i].field × weight) + 가성비 × valueWeight
+   - 의류는 rating 단일 점수라 특수 처리 유지(rating×0.65 + 가성비×0.35).
+   - 신규/음식/생활용품은 레지스트리 scoreFields를 그대로 가중합.
    가성비 = 같은 풀 안 최저가 5.0 ~ 최고가 1.0 선형 정규화. */
 function computeComposite(list) {
   let min = Infinity, max = -Infinity;
@@ -706,16 +843,10 @@ function computeComposite(list) {
     else valueScore = 5 - 4 * ((pr - min) / (max - min)); // 5(최저가)~1(최고가)
     valueScore = Math.max(1, Math.min(5, valueScore));
 
-    const dom = domainOf(p);
-    let comp;
-    if (dom === "음식") {
-      comp = clampScore(p.scoreTaste) * 0.40 + clampScore(p.scoreSatisfy) * 0.35 + valueScore * 0.25;
-    } else if (dom === "생활용품") {
-      comp = clampScore(p.scoreSafety) * 0.35 + clampScore(p.scoreSatisfy) * 0.30 +
-             valueScore * 0.20 + clampScore(p.scoreSpace) * 0.15;
-    } else {
-      comp = clampScore(p.rating) * 0.65 + valueScore * 0.35;
-    }
+    const cfg = domainCfg(domainOf(p));
+    let comp = valueScore * cfg.valueWeight;
+    cfg.scoreFields.forEach((f) => { comp += clampScore(p[f.field]) * f.weight; });
+
     comp = Math.round(comp * 2) / 2;          // 0.5 단위 반올림
     comp = Math.max(0, Math.min(5, comp));    // 클램프
     p._value = Math.round(valueScore * 10) / 10;
@@ -739,8 +870,8 @@ function applyFilters() {
     return true;
   });
 
-  // "별점 높은순": 의류는 리뷰별점, 음식/생활용품은 종합별점 기준
-  const ratingKey = (p) => (domainOf(p) === "의류") ? (Number(p.rating) || 0) : (Number(p._composite) || 0);
+  // "별점 높은순": 의류는 리뷰별점, 그 외 도메인은 종합별점 기준
+  const ratingKey = (p) => (domainCfg(domainOf(p)).special === "cloth") ? (Number(p.rating) || 0) : (Number(p._composite) || 0);
   if (filter.sort === "가격 낮은순") list.sort((a, b) => (a.price || 0) - (b.price || 0));
   else if (filter.sort === "가격 높은순") list.sort((a, b) => (b.price || 0) - (a.price || 0));
   else if (filter.sort === "별점 높은순") list.sort((a, b) => ratingKey(b) - ratingKey(a) || (b._composite || 0) - (a._composite || 0));
@@ -853,7 +984,7 @@ function cardHTML(p) {
   const faved = FAVS.has(p.id);
   const src = proxiedImg(p.image);
   const dom = domainOf(p);
-  const isCloth = dom === "의류";
+  const isCloth = domainCfg(dom).special === "cloth";
   const isBig = isCloth && p.sizeClass === "빅사이즈";
   const href = p.link ? esc(p.link) : "";
   const cmp = COMPARE.has(p.id);
@@ -899,26 +1030,27 @@ function fitKgPart(raw) {
   return (m ? m[0] : t).trim();
 }
 
-/* 보조 회색 1줄(타일): 도메인별 분기
-   - 의류: 사이즈 · 실측 요약
-   - 음식: unitNote(개당·단가)
-   - 생활용품: safetyNote(안전 근거) */
+/* 보조 회색 1줄(타일): DOMAIN_CONFIG extraFields(where:"card") 기반 일반화
+   - 의류(특수): 사이즈 · 실측 요약
+   - 그 외: 레지스트리의 첫 card extraField(unitNote/safetyNote/skinNote/specNote 등),
+     없으면 카테고리명 폴백 */
 function subLine(p, dom, isBig) {
-  if (dom === "음식") {
-    return (p.unitNote && String(p.unitNote).trim()) ? "🏷️ " + String(p.unitNote).trim() : (p.foodCategory || "");
+  const cfg = domainCfg(dom);
+  if (cfg.special === "cloth") {
+    const parts = [];
+    if (p.sizeRange) parts.push(`📏 ${p.sizeRange}`);
+    // 빅사이즈는 실측 한 항목을 추가로 (가슴/허리)
+    if (isBig) {
+      if (p.chest != null) parts.push(`가슴${p.chest}`);
+      else if (p.waist != null) parts.push(`허리${p.waist}`);
+    }
+    if (!parts.length) parts.push(p.type || "");
+    return parts.join(" · ");
   }
-  if (dom === "생활용품") {
-    return (p.safetyNote && String(p.safetyNote).trim()) ? "🛡️ " + String(p.safetyNote).trim() : (p.roomCategory || "");
-  }
-  const parts = [];
-  if (p.sizeRange) parts.push(`📏 ${p.sizeRange}`);
-  // 빅사이즈는 실측 한 항목을 추가로 (가슴/허리)
-  if (isBig) {
-    if (p.chest != null) parts.push(`가슴${p.chest}`);
-    else if (p.waist != null) parts.push(`허리${p.waist}`);
-  }
-  if (!parts.length) parts.push(p.type || "");
-  return parts.join(" · ");
+  // 일반 도메인: where:"card" 보조필드 중 값 있는 첫 항목
+  const cardField = cfg.extraFields.find((f) => f.where === "card" && p[f.key] && String(p[f.key]).trim());
+  if (cardField) return `${cardField.icon} ${String(p[cardField.key]).trim()}`;
+  return p[cfg.categoryKey] || "";
 }
 
 /* 이미지 로드 완료 시 스켈레톤 제거 / 실패 시 카드 통째로 제거 + 카운트 갱신
@@ -979,15 +1111,11 @@ function ratingHTML(p) {
   const comp = Math.max(0, Math.min(5, Number(p._composite) || 0));
   const pct = (comp / 5) * 100;
   const valueR = (Number(p._value) || 0).toFixed(1);
-  const dom = domainOf(p);
-  let title;
-  if (dom === "음식") {
-    title = `맛 ${clampScore(p.scoreTaste).toFixed(1)} · 만족 ${clampScore(p.scoreSatisfy).toFixed(1)} · 가성비 ${valueR}`;
-  } else if (dom === "생활용품") {
-    title = `안전 ${clampScore(p.scoreSafety).toFixed(1)} · 만족 ${clampScore(p.scoreSatisfy).toFixed(1)} · 가성비 ${valueR} · 공간 ${clampScore(p.scoreSpace).toFixed(1)}`;
-  } else {
-    title = `리뷰 ${(Number(p.rating) || 0).toFixed(1)} · 가성비 ${valueR}`;
-  }
+  const cfg = domainCfg(domainOf(p));
+  // 레지스트리 scoreFields로 점수 툴팁 일반화 (의류는 "리뷰 …"로 동일하게 표기됨)
+  const parts = cfg.scoreFields.map((f) => `${f.label} ${clampScore(p[f.field]).toFixed(1)}`);
+  parts.push(`가성비 ${valueR}`);
+  const title = parts.join(" · ");
   return `
     <span class="rating" title="${esc(title)}">
       <span class="stars" aria-label="종합 별점 ${comp}점">
@@ -1072,24 +1200,27 @@ function openDetail(id) {
   if (!p) return;
   computeFor(p);                       // 자기 분류 풀 기준 종합별점 계산
   const dom = domainOf(p);
-  const isCloth = dom === "의류";
+  const cfg = domainCfg(dom);
+  const isCloth = cfg.special === "cloth";
   const isBig = isCloth && p.sizeClass === "빅사이즈";
   const mc = mallColor(p.mall || "");
   const price = Number(p.price || 0).toLocaleString("ko-KR");
   const href = p.link ? esc(p.link) : "";
 
-  // 의류 전용: 핏/실측 (음식·생활용품은 숨김)
+  // 의류 전용: 핏/실측 (그 외 도메인은 숨김)
   const fitBlock = (isBig && p.fitText && String(p.fitText).trim())
     ? `<div class="dt-fit"><span class="dt-fit-ico">🧍</span><span>${esc(String(p.fitText).replace(/^🧍\s*/, ""))}</span></div>`
     : "";
   const measureBlock = (isCloth && fullMeasureHTML(p))
     ? `<div class="dt-sec"><h4>📏 실측 사이즈</h4>${fullMeasureHTML(p)}</div>` : "";
 
-  // 음식: 단가(unitNote) / 생활용품: 안전 근거(safetyNote)
-  const unitBlock = (dom === "음식" && p.unitNote && String(p.unitNote).trim())
-    ? `<div class="dt-sec"><h4>🏷️ 개당·단가</h4><p>${esc(p.unitNote)}</p></div>` : "";
-  const safetyBlock = (dom === "생활용품" && p.safetyNote && String(p.safetyNote).trim())
-    ? `<div class="dt-sec"><h4>🛡️ 안전·내구 근거</h4><p>${esc(p.safetyNote)}</p></div>` : "";
+  // 도메인 보조필드(extraFields) 전체를 레지스트리 순서대로 노출
+  // (음식 단가, 건강 단가+성분, 디지털 스펙, 뷰티 피부·성분, 운동 스펙·단가 …)
+  const extraBlocks = cfg.extraFields.map((f) => {
+    const v = p[f.key];
+    if (v == null || !String(v).trim()) return "";
+    return `<div class="dt-sec"><h4>${f.icon} ${esc(f.label)}</h4><p>${esc(String(v).trim())}</p></div>`;
+  }).join("");
 
   const reviewBlock = (p.reviewSummary && String(p.reviewSummary).trim())
     ? `<div class="dt-sec"><h4>⭐ 현실 후기 요약</h4><p>${esc(p.reviewSummary)}</p></div>` : "";
@@ -1110,8 +1241,7 @@ function openDetail(id) {
       ${sellerLine(p)}
     </div>
     ${fitBlock}
-    ${unitBlock}
-    ${safetyBlock}
+    ${extraBlocks}
     ${reviewBlock}
     ${measureBlock}
     ${cautionBlock}
@@ -1313,12 +1443,15 @@ function renderCompareView() {
 
   // 어떤 실측 행을 보여줄지 — 하나라도 값이 있는 항목만 행 노출
   const measureDefs = [
-    { key: "unitNote",   label: "단가",       unit: "" },
-    { key: "safetyNote", label: "안전",       unit: "" },
-    { key: "sizeRange",  label: "사이즈범위", unit: "" },
-    { key: "chest",      label: "가슴",       unit: "cm" },
-    { key: "waist",      label: "허리",       unit: "cm" },
-    { key: "length",     label: "총장",       unit: "cm" }
+    { key: "unitNote",       label: "단가",       unit: "" },
+    { key: "specNote",       label: "스펙",       unit: "" },
+    { key: "ingredientNote", label: "성분",       unit: "" },
+    { key: "skinNote",       label: "피부·성분",  unit: "" },
+    { key: "safetyNote",     label: "안전",       unit: "" },
+    { key: "sizeRange",      label: "사이즈범위", unit: "" },
+    { key: "chest",          label: "가슴",       unit: "cm" },
+    { key: "waist",          label: "허리",       unit: "cm" },
+    { key: "length",         label: "총장",       unit: "cm" }
   ];
   const shownMeasures = measureDefs.filter((m) => items.some((p) => p[m.key] != null && p[m.key] !== ""));
   const anyBig = items.some((p) => p.sizeClass === "빅사이즈");
