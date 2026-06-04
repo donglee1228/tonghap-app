@@ -1,4 +1,4 @@
-/* 옷싹 서비스워커 v20260604
+/* 옷싹 서비스워커 v20260604b
    - install: 앱 셸 프리캐시 (오프라인 첫 방문에도 셸 로드 가능)
    - activate: 구버전 캐시만 삭제(현재 버전 유지) + clients.claim
    - fetch 전략:
@@ -7,7 +7,7 @@
        · 기타 동일 출처 정적 자원(css/js/png/svg/manifest): cache-first + 백그라운드 갱신
        · 외부 출처(이미지 프록시 등): SW 미개입(그대로 통과)
 */
-const VERSION = "otssak-v20260604";
+const VERSION = "otssak-v20260604b";
 const SHELL = [
   "./",
   "./index.html",
@@ -79,7 +79,23 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // 3) 기타 동일 출처 정적 자원 — cache-first + 백그라운드 갱신
+  // 3) 핵심 코드/스타일(app.js·style.css) — network-first
+  //    (오래된/깨진 스크립트가 캐시에 박혀 백지가 되는 사고 방지. 오프라인일 때만 캐시 폴백)
+  if (url.pathname.endsWith("app.js") || url.pathname.endsWith("style.css")) {
+    e.respondWith(
+      caches.open(VERSION).then((c) =>
+        fetch(req)
+          .then((res) => {
+            if (res && res.ok) c.put(req, res.clone());
+            return res;
+          })
+          .catch(() => c.match(req))
+      )
+    );
+    return;
+  }
+
+  // 4) 기타 동일 출처 정적 자원(아이콘·이미지·manifest) — cache-first + 백그라운드 갱신
   e.respondWith(
     caches.open(VERSION).then((c) =>
       c.match(req).then((cached) => {
