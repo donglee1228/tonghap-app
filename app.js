@@ -1,5 +1,16 @@
 "use strict";
 
+const SHOW_FEMALE = false;  // 나중에 true면 여성 그룹 다시 노출
+
+// ===== 문의 폼: Google Forms 연결 설정 (실제 폼 생성 후 값 채울 것) =====
+// TODO: 아래 4개 자리표시자를 실제 구글폼 값으로 교체하면 전송이 활성화된다.
+const INQUIRY_FORM = {
+  FORM_ID: "TODO_FORM_ID",          // docs.google.com/forms/d/e/<여기>/formResponse
+  ENTRY_분류: "entry.TODO_CATEGORY", // 분류 질문 entry ID
+  ENTRY_내용: "entry.TODO_CONTENT",  // 내용 질문 entry ID
+  ENTRY_연락처: "entry.TODO_CONTACT",// 연락처 질문 entry ID
+};
+
 /* ===== Fallback 더미 데이터 (data.json fetch 실패 대비 · 각 그룹 대표 · 이미지 있는 것만) ===== */
 const FALLBACK_DATA = [
   {
@@ -71,6 +82,39 @@ function overseasIcon(mall) {
   return (mall === "알리익스프레스" || mall === "테무") ? "✈️" : "🚚";
 }
 
+/* ===== 도메인 정의 (3대 도메인) — 순서 고정 ===== */
+const DOMAINS = [
+  { key: "의류",     emoji: "👕", name: "옷",       desc: "성별·사이즈별 의류" },
+  { key: "음식",     emoji: "🍱", name: "음식",     desc: "1인가구 간편식·꿀템" },
+  { key: "생활용품", emoji: "🧹", name: "생활용품", desc: "원룸 살림 꿀템" }
+];
+/* 상품의 도메인 판정 (의류는 domain 없으면 "의류"로 간주, 옛 "원룸"도 생활용품으로) */
+function domainOf(p) {
+  const d = (p && p.domain) ? String(p.domain).trim() : "";
+  if (d === "음식") return "음식";
+  if (d === "생활용품" || d === "원룸") return "생활용품";
+  return "의류";
+}
+/* 도메인별 카테고리 키 필드명 (의류는 그룹 흐름이라 별도) */
+function categoryField(domain) {
+  if (domain === "음식") return "foodCategory";
+  if (domain === "생활용품") return "roomCategory";
+  return "garmentType";
+}
+
+/* ===== 음식 카테고리 순서/이모지 ===== */
+const FOOD_ORDER = ["즉석밥·간편식", "라면·면류", "냉동식품", "단백질·계란·가공육", "국·찌개·반찬", "간식·안주", "음료·커피·물", "조미료·소스·기름"];
+const FOOD_EMOJI = {
+  "즉석밥·간편식": "🍚", "라면·면류": "🍜", "냉동식품": "🧊", "단백질·계란·가공육": "🍗",
+  "국·찌개·반찬": "🍲", "간식·안주": "🍪", "음료·커피·물": "☕", "조미료·소스·기름": "🧂"
+};
+/* ===== 생활용품 카테고리 순서/이모지 ===== */
+const ROOM_ORDER = ["조명", "수납·정리", "멀티탭·전기", "행거·건조", "벽선반·거치", "청소용품", "주방용품·조리도구", "욕실·위생", "세탁·세제", "소형가전"];
+const ROOM_EMOJI = {
+  "조명": "💡", "수납·정리": "📦", "멀티탭·전기": "🔌", "행거·건조": "🧺", "벽선반·거치": "🪟",
+  "청소용품": "🧹", "주방용품·조리도구": "🍳", "욕실·위생": "🚿", "세탁·세제": "🧼", "소형가전": "🍳"
+};
+
 /* ===== 그룹(성별+사이즈) 정의 — 순서 고정 (남성 먼저) ===== */
 const GROUPS = [
   { gender: "남성", sizeClass: "일반",    emoji: "👨",   title: "남성 · 일반",            desc: "남성 일반 사이즈" },
@@ -80,10 +124,12 @@ const GROUPS = [
 ];
 
 /* ===== 종류(garmentType) 정렬 순서 + 이모지 ===== */
-const GARMENT_ORDER = ["바람막이", "청바지", "티셔츠", "아웃도어팬츠", "져지", "트레이닝복"];
+const GARMENT_ORDER = ["바람막이", "청바지", "티셔츠", "아웃도어팬츠", "져지", "트레이닝복",
+  "후드·맨투맨", "셔츠·니트", "패딩·코트", "속옷·양말·홈웨어"];
 const GARMENT_EMOJI = {
   "바람막이": "🧥", "청바지": "👖", "티셔츠": "👕",
-  "아웃도어팬츠": "🥾", "져지": "🏃", "트레이닝복": "🩳"
+  "아웃도어팬츠": "🥾", "져지": "🏃", "트레이닝복": "🩳",
+  "후드·맨투맨": "👕", "셔츠·니트": "👔", "패딩·코트": "🧥", "속옷·양말·홈웨어": "🧦"
 };
 
 /* 가격 필터: 현재 풀(선택된 종류)의 분포로 동적 생성된다. "전체"는 항상 첫 칸. */
@@ -143,7 +189,10 @@ const SORT_DEFAULT = "추천순";
 
 /* ===== 상태 ===== */
 let ALL = [];          // 이미지 있는 상품만 보관
-const sel = { gender: null, sizeClass: null, garmentType: null };
+/* domain: 현재 도메인("의류"|"음식"|"생활용품")
+   category: 음식/생활용품의 선택 카테고리(foodCategory/roomCategory 값)
+   gender/sizeClass/garmentType: 의류 전용 */
+const sel = { domain: null, category: null, gender: null, sizeClass: null, garmentType: null };
 const filter = { price: "전체", malls: new Set(), sort: SORT_DEFAULT };
 /* 현재 종류 풀에 실제 존재하는 몰 목록(빈도 내림차순) — 종류 진입 시 갱신 */
 let CUR_MALLS = [];
@@ -175,14 +224,82 @@ async function init() {
   // ★ 이미지 있는 상품만 남긴다
   ALL = ALL.filter((p) => p.image && String(p.image).trim());
 
-  buildGroupScreen();
+  // ★ 여성 그룹 숨김(UI 한정): SHOW_FEMALE=false면 옷 도메인 여성 상품을 데이터 사용 시점에서 제외.
+  //    여기 한 곳에서 거르면 도메인/그룹 카운트, 목록, 검색, 비교, 찜 등 모든 흐름에 일관 적용된다.
+  //    (data.json 원본은 그대로 — 메모리상 ALL에서만 제외)
+  if (!SHOW_FEMALE) {
+    ALL = ALL.filter((p) => !(domainOf(p) === "의류" && p.gender === "여성"));
+  }
+
+  buildDomainScreen();
   buildSheet();
   buildSortBar();
   bindNav();
   bindTabs();
   bindCompare();
   buildScoreInfo();
+  bindInquiry();
   updateCompareBar();
+}
+
+/* ===== 정보 탭: 건의/수정 요청 폼 (구글폼 formResponse로 POST · 숨은 iframe target) ===== */
+function bindInquiry() {
+  const form = document.getElementById("inquiry-form");
+  if (!form) return;
+  const msg = document.getElementById("inq-msg");
+
+  function showMsg(text, ok) {
+    if (!msg) return;
+    msg.textContent = text;
+    msg.classList.toggle("ok", !!ok);
+    msg.classList.toggle("err", !ok);
+    msg.hidden = false;
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const category = (document.getElementById("inq-category") || {}).value || "";
+    const content = ((document.getElementById("inq-content") || {}).value || "").trim();
+    const contact = ((document.getElementById("inq-contact") || {}).value || "").trim();
+
+    if (!content) {
+      showMsg("내용을 적어주세요", false);
+      return;
+    }
+
+    // 자리표시자 상태면 실제 전송하지 않고 안내만 (깨진 POST 방지)
+    if (INQUIRY_FORM.FORM_ID === "TODO_FORM_ID") {
+      showMsg("문의 접수는 준비 중이에요. 곧 열릴게요 🙏", true);
+      return;
+    }
+
+    // 숨은 iframe을 target으로 하는 동적 폼으로 POST (CORS·페이지 이동 없음)
+    const gForm = document.createElement("form");
+    gForm.action = "https://docs.google.com/forms/d/e/" + INQUIRY_FORM.FORM_ID + "/formResponse";
+    gForm.method = "POST";
+    gForm.target = "otssak-inquiry-sink";
+    gForm.style.display = "none";
+
+    const fields = [
+      [INQUIRY_FORM.ENTRY_분류, category],
+      [INQUIRY_FORM.ENTRY_내용, content],
+      [INQUIRY_FORM.ENTRY_연락처, contact],
+    ];
+    fields.forEach(([name, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      gForm.appendChild(input);
+    });
+
+    document.body.appendChild(gForm);
+    gForm.submit();
+    gForm.remove();
+
+    form.reset();
+    showMsg("보냈어요! 확인하고 반영할게요 🙆", true);
+  });
 }
 
 /* ===== 정보 탭: 종합별점·가성비 점수 산식 시각화 카드 (JS로 주입, index.html 미수정) =====
@@ -216,7 +333,7 @@ function buildScoreInfo() {
   card.innerHTML =
     '<div class="info-emoji">📊</div>' +
     '<h3>종합별점·가성비 점수는 이렇게 계산해요</h3>' +
-    '<p>옷싹 별점은 <b>실제 후기 평점</b>에다가, 같은 종류끼리 비교한 <b>가성비</b>를 살짝 섞어서 매겨요. 비싸기만 하면 깎이고, 싸고 평 좋으면 올라가는 구조예요.</p>' +
+    '<p>옷싹 별점은 <b>실제 후기 평점</b>에다가, 같은 카테고리끼리 비교한 <b>가성비</b>를 섞어서 매겨요. 비싸기만 하면 깎이고, 싸고 평 좋으면 올라가는 구조예요. (아래 그림은 <b>옷</b> 기준이고, 음식·생활용품은 항목이 조금 달라요 — 위 카드 참고!)</p>' +
 
     '<div class="si-formula">' +
       donut +
@@ -318,83 +435,131 @@ function proxiedImg(url) {
     "&default=" + encodeURIComponent(PLACEHOLDER_URI);
 }
 
-/* ===== 1단계: 홀로그램 홈 화면 — 작은 네모 박스 그리드 ===== */
-/* 앞쪽 박스 = 실제 그룹(짧은 이름 + 이모지), 나머지 = 미래 콘텐츠용 빈 박스 */
-const GROUP_CARD = {
-  "남성|일반":    { name: "남성 · 일반", emoji: "🧑" },
-  "남성|빅사이즈": { name: "남성 · 빅",   emoji: "🧍" },
-  "여성|일반":    { name: "여성 · 일반", emoji: "👩" },
-  "여성|빅사이즈": { name: "여성 · 빅",   emoji: "🧍‍♀️" }
-};
-
-/* 홈 그리드 총 칸 수 (앞 4칸 = 그룹, 나머지 = 빈 placeholder) */
-const HOME_TILE_TOTAL = 15;
-
-function buildGroupScreen() {
-  const box = $("#group-choices");
+/* ===== 1단계: 홀로그램 홈 화면 — 도메인 패널 3개(👕 옷 / 🍱 음식 / 🧹 생활용품) ===== */
+function buildDomainScreen() {
+  const box = $("#domain-choices");
+  if (!box) return;
   box.innerHTML = "";
 
-  // 그룹별 (이미지 있는) 상품 개수 — data.json에서 동적 계산
-  const groupCount = (g) =>
-    ALL.filter((p) => p.gender === g.gender && p.sizeClass === g.sizeClass).length;
+  const domainCount = (key) => ALL.filter((p) => domainOf(p) === key).length;
 
-  // 앞쪽: 실제 그룹 타일
-  GROUPS.forEach((g) => {
-    const meta = GROUP_CARD[g.gender + "|" + g.sizeClass] || { name: g.title, emoji: "👕" };
+  DOMAINS.forEach((d) => {
     const card = document.createElement("button");
     card.type = "button";
-    card.className = "group-tile";
+    card.className = "group-tile domain-tile";
     card.innerHTML = `
-      <span class="gt-emoji" aria-hidden="true">${meta.emoji}</span>
-      <span class="gt-name">${esc(meta.name)}</span>
-      <span class="gt-count">${groupCount(g)}개</span>`;
-    card.addEventListener("click", () => enterGroup(g));
+      <span class="gt-emoji" aria-hidden="true">${d.emoji}</span>
+      <span class="gt-name">${esc(d.name)}</span>
+      <span class="gt-count">${domainCount(d.key)}개</span>`;
+    card.addEventListener("click", () => enterDomain(d.key));
     box.appendChild(card);
   });
+}
 
-  // 나머지: 미래 콘텐츠용 빈 placeholder 박스 (클릭 무반응)
-  const blanks = Math.max(0, HOME_TILE_TOTAL - GROUPS.length);
-  for (let i = 0; i < blanks; i++) {
-    const ph = document.createElement("div");
-    ph.className = "group-tile is-empty";
-    ph.setAttribute("aria-hidden", "true");
-    box.appendChild(ph);
+/* 도메인 패널 클릭 → 옷은 성별×사이즈 그룹, 음식/생활용품은 카테고리 패널 */
+function enterDomain(domainKey) {
+  sel.domain = domainKey;
+  sel.category = null;
+  sel.gender = null; sel.sizeClass = null; sel.garmentType = null;
+
+  if (domainKey === "의류") {
+    buildClothGroupScreen();
+    goTo("clothgroup");
+  } else {
+    buildCategoryScreen();
+    goTo("category");
   }
+}
+
+/* ===== 2단계(옷): 성별×사이즈 그룹 선택 화면 (기존 흐름) ===== */
+function buildClothGroupScreen() {
+  const box = $("#clothgroup-choices");
+  if (!box) return;
+  box.innerHTML = "";
+
+  const groupCount = (g) =>
+    ALL.filter((p) => domainOf(p) === "의류" && p.gender === g.gender && p.sizeClass === g.sizeClass).length;
+
+  // SHOW_FEMALE=false면 여성 그룹 타일은 아예 노출하지 않는다 (남성만)
+  const groups = SHOW_FEMALE ? GROUPS : GROUPS.filter((g) => g.gender !== "여성");
+
+  groups.forEach((g) => {
+    const emoji = g.emoji || "👕";
+    box.appendChild(choiceBtn(emoji, g.title, `${groupCount(g)}개`, () => enterGroup(g)));
+  });
 }
 
 /* 그룹 타일 클릭 → 종류 선택 화면으로 드릴다운 */
 function enterGroup(g) {
+  sel.domain = "의류";
   sel.gender = g.gender;
   sel.sizeClass = g.sizeClass;
   sel.garmentType = null;
+  sel.category = null;
   const crumb = $("#crumb-group");
   if (crumb) crumb.textContent = g.title;
   buildCategoryScreen();
   goTo("category");
 }
 
-/* ===== 2단계: 종류 선택 화면 (해당 그룹에 실제 있는 garmentType만) ===== */
+/* ===== 2단계: 카테고리 선택 화면 (도메인별 분기) =====
+   - 의류: 현재 성별·사이즈 그룹의 garmentType
+   - 음식: foodCategory / 생활용품: roomCategory */
 function buildCategoryScreen() {
   const box = $("#category-choices");
   box.innerHTML = "";
-  const pool = ALL.filter((p) => p.gender === sel.gender && p.sizeClass === sel.sizeClass);
+  const qEl = $("#category-q");
 
-  // garmentType별 개수
-  const counts = {};
-  pool.forEach((p) => { counts[p.garmentType] = (counts[p.garmentType] || 0) + 1; });
+  if (sel.domain === "의류") {
+    if (qEl) qEl.textContent = "어떤 옷 보실래요?";
+    const crumb = $("#crumb-group");
+    const g = GROUPS.find((x) => x.gender === sel.gender && x.sizeClass === sel.sizeClass);
+    if (crumb && g) crumb.textContent = g.title;
 
-  // 지정 순서로, 상품 있는 것만
-  const types = GARMENT_ORDER.filter((t) => counts[t] > 0);
+    const pool = ALL.filter((p) => domainOf(p) === "의류" && p.gender === sel.gender && p.sizeClass === sel.sizeClass);
+    const counts = {};
+    pool.forEach((p) => { counts[p.garmentType] = (counts[p.garmentType] || 0) + 1; });
+    const types = GARMENT_ORDER.filter((t) => counts[t] > 0)
+      .concat(Object.keys(counts).filter((t) => t && GARMENT_ORDER.indexOf(t) === -1));
 
-  if (!types.length) {
-    box.innerHTML = `<div class="empty"><span class="emoji">🫥</span><p>이 분류엔 아직 옷이 없어요.</p></div>`;
+    if (!types.length) {
+      box.innerHTML = `<div class="empty"><span class="emoji">🫥</span><p>이 분류엔 아직 옷이 없어요.</p></div>`;
+      return;
+    }
+    types.forEach((t) => {
+      box.appendChild(choiceBtn(GARMENT_EMOJI[t] || "👚", t, `${counts[t]}개`, () => {
+        sel.garmentType = t;
+        sel.category = t;
+        openList();
+      }));
+    });
     return;
   }
 
-  types.forEach((t) => {
-    const emoji = GARMENT_EMOJI[t] || "👚";
-    box.appendChild(choiceBtn(emoji, t, `${counts[t]}개`, () => {
-      sel.garmentType = t;
+  // 음식 / 생활용품
+  const isFood = sel.domain === "음식";
+  if (qEl) qEl.textContent = isFood ? "뭐 드실래요?" : "뭐가 필요하세요?";
+  const crumb = $("#crumb-group");
+  if (crumb) crumb.textContent = (isFood ? "🍱 음식" : "🧹 생활용품");
+
+  const field = categoryField(sel.domain);
+  const order = isFood ? FOOD_ORDER : ROOM_ORDER;
+  const emojiMap = isFood ? FOOD_EMOJI : ROOM_EMOJI;
+
+  const pool = ALL.filter((p) => domainOf(p) === sel.domain);
+  const counts = {};
+  pool.forEach((p) => { const c = p[field]; if (c) counts[c] = (counts[c] || 0) + 1; });
+  const cats = order.filter((c) => counts[c] > 0)
+    .concat(Object.keys(counts).filter((c) => order.indexOf(c) === -1));
+
+  if (!cats.length) {
+    box.innerHTML = `<div class="empty"><span class="emoji">🫥</span><p>이 도메인엔 아직 상품이 없어요.</p></div>`;
+    return;
+  }
+  cats.forEach((c) => {
+    box.appendChild(choiceBtn(emojiMap[c] || "🛒", c, `${counts[c]}개`, () => {
+      sel.category = c;
+      sel.garmentType = null;
       openList();
     }));
   });
@@ -420,7 +585,13 @@ function goTo(step) {
 }
 
 function bindNav() {
-  $("#back-to-group").addEventListener("click", () => goTo("group"));
+  // 도메인 홈으로 (옷 그룹 화면에서)
+  const backToDomain = $("#back-to-domain");
+  if (backToDomain) backToDomain.addEventListener("click", () => goTo("domain"));
+  // 카테고리 화면 뒤로: 옷이면 그룹 화면, 음식/생활용품이면 도메인 홈
+  $("#back-to-group").addEventListener("click", () => {
+    if (sel.domain === "의류") goTo("clothgroup"); else goTo("domain");
+  });
   $("#back-to-category").addEventListener("click", () => goTo("category"));
 
   $("#filter-btn").addEventListener("click", openSheet);
@@ -467,31 +638,60 @@ function switchTab(idx) {
 
 /* ===== 목록 열기 ===== */
 function openList() {
-  $("#list-title").textContent = `${groupTitle()} · ${sel.garmentType}`;
-  // 현재 종류의 실제 가격 분포로 가격 필터 구간 재생성
+  $("#list-title").textContent = listTitle();
+  // 현재 카테고리의 실제 가격 분포로 가격 필터 구간 재생성
   buildPriceOpts(currentPool());
   if (!(filter.price in PRICE_OPTS)) filter.price = "전체";  // 이전 구간이 사라졌으면 초기화
   rebuildPriceChips();
-  rebuildMallChips();   // 현재 종류의 몰만, 단일몰이면 숨김
+  rebuildMallChips();   // 현재 카테고리의 몰만, 단일몰이면 숨김
   syncSortBar();
   goTo("list");
   render();
+}
+function listTitle() {
+  if (sel.domain === "의류") return `${groupTitle()} · ${sel.garmentType}`;
+  return sel.category || sel.domain || "상품";
 }
 function groupTitle() {
   const g = GROUPS.find((x) => x.gender === sel.gender && x.sizeClass === sel.sizeClass);
   return g ? `${g.gender}·${g.sizeClass}` : "전체";
 }
 
-/* 현재 선택(성별+사이즈+종류)에 맞는 풀 */
+/* 현재 선택에 맞는 풀 (가성비 정규화 풀과 동일)
+   - 의류: 같은 성별+사이즈+종류
+   - 음식/생활용품: 같은 카테고리(foodCategory/roomCategory) */
 function currentPool() {
-  return ALL.filter((p) =>
-    p.gender === sel.gender &&
-    p.sizeClass === sel.sizeClass &&
-    p.garmentType === sel.garmentType
-  );
+  if (sel.domain === "의류") {
+    return ALL.filter((p) =>
+      domainOf(p) === "의류" &&
+      p.gender === sel.gender &&
+      p.sizeClass === sel.sizeClass &&
+      p.garmentType === sel.garmentType
+    );
+  }
+  const field = categoryField(sel.domain);
+  return ALL.filter((p) => domainOf(p) === sel.domain && p[field] === sel.category);
 }
 
-/* ===== 종합 별점 계산 (같은 종류 풀 안에서 가성비) ===== */
+/* 어떤 상품이 속한 "가성비 정규화 풀" (자기 카테고리 동료들) */
+function poolOf(p) {
+  const dom = domainOf(p);
+  if (dom === "의류") {
+    return ALL.filter((x) => domainOf(x) === "의류" &&
+      x.gender === p.gender && x.sizeClass === p.sizeClass && x.garmentType === p.garmentType);
+  }
+  const field = categoryField(dom);
+  return ALL.filter((x) => domainOf(x) === dom && x[field] === p[field]);
+}
+
+/* 점수(1~5) 안전 변환 */
+function clampScore(v) { return Math.max(0, Math.min(5, Number(v) || 0)); }
+
+/* ===== 종합 별점 계산 (도메인별 산식 분기, 같은 카테고리 풀 안에서 가성비) =====
+   - 의류:     rating×0.65 + 가성비×0.35
+   - 음식:     scoreTaste×0.40 + scoreSatisfy×0.35 + 가성비×0.25
+   - 생활용품: scoreSafety×0.35 + scoreSatisfy×0.30 + 가성비×0.20 + scoreSpace×0.15
+   가성비 = 같은 풀 안 최저가 5.0 ~ 최고가 1.0 선형 정규화. */
 function computeComposite(list) {
   let min = Infinity, max = -Infinity;
   list.forEach((p) => {
@@ -504,8 +704,18 @@ function computeComposite(list) {
     let valueScore;
     if (max === min) valueScore = 5;
     else valueScore = 5 - 4 * ((pr - min) / (max - min)); // 5(최저가)~1(최고가)
-    const rating = Math.max(0, Math.min(5, Number(p.rating) || 0));
-    let comp = rating * 0.65 + valueScore * 0.35;
+    valueScore = Math.max(1, Math.min(5, valueScore));
+
+    const dom = domainOf(p);
+    let comp;
+    if (dom === "음식") {
+      comp = clampScore(p.scoreTaste) * 0.40 + clampScore(p.scoreSatisfy) * 0.35 + valueScore * 0.25;
+    } else if (dom === "생활용품") {
+      comp = clampScore(p.scoreSafety) * 0.35 + clampScore(p.scoreSatisfy) * 0.30 +
+             valueScore * 0.20 + clampScore(p.scoreSpace) * 0.15;
+    } else {
+      comp = clampScore(p.rating) * 0.65 + valueScore * 0.35;
+    }
     comp = Math.round(comp * 2) / 2;          // 0.5 단위 반올림
     comp = Math.max(0, Math.min(5, comp));    // 클램프
     p._value = Math.round(valueScore * 10) / 10;
@@ -513,11 +723,9 @@ function computeComposite(list) {
   });
 }
 
-/* 어떤 상품의 종합별점을 (자기 그룹+종류 풀 기준으로) 계산해두기 */
+/* 어떤 상품의 종합별점을 (자기 카테고리 풀 기준으로) 계산해두기 */
 function computeFor(p) {
-  computeComposite(ALL.filter((x) =>
-    x.gender === p.gender && x.sizeClass === p.sizeClass && x.garmentType === p.garmentType
-  ));
+  computeComposite(poolOf(p));
 }
 
 /* ===== 필터/정렬 ===== */
@@ -531,10 +739,12 @@ function applyFilters() {
     return true;
   });
 
+  // "별점 높은순": 의류는 리뷰별점, 음식/생활용품은 종합별점 기준
+  const ratingKey = (p) => (domainOf(p) === "의류") ? (Number(p.rating) || 0) : (Number(p._composite) || 0);
   if (filter.sort === "가격 낮은순") list.sort((a, b) => (a.price || 0) - (b.price || 0));
   else if (filter.sort === "가격 높은순") list.sort((a, b) => (b.price || 0) - (a.price || 0));
-  else if (filter.sort === "별점 높은순") list.sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b._composite || 0) - (a._composite || 0));
-  else list.sort((a, b) => (b._composite || 0) - (a._composite || 0) || (b.rating || 0) - (a.rating || 0)); // 추천순(기본)
+  else if (filter.sort === "별점 높은순") list.sort((a, b) => ratingKey(b) - ratingKey(a) || (b._composite || 0) - (a._composite || 0));
+  else list.sort((a, b) => (b._composite || 0) - (a._composite || 0) || ratingKey(b) - ratingKey(a)); // 추천순(기본)
 
   return list;
 }
@@ -642,7 +852,9 @@ function cardHTML(p) {
   const mc = mallColor(p.mall || "");
   const faved = FAVS.has(p.id);
   const src = proxiedImg(p.image);
-  const isBig = p.sizeClass === "빅사이즈";
+  const dom = domainOf(p);
+  const isCloth = dom === "의류";
+  const isBig = isCloth && p.sizeClass === "빅사이즈";
   const href = p.link ? esc(p.link) : "";
   const cmp = COMPARE.has(p.id);
 
@@ -667,7 +879,7 @@ function cardHTML(p) {
           <span class="ship-ico">${overseasIcon(p.mall)}</span>
         </div>
         ${isBig ? bigFitChip(p) : ""}
-        <div class="card-sub">${esc(subLine(p, isBig))}</div>
+        <div class="card-sub">${esc(subLine(p, dom, isBig))}</div>
         <span class="card-more" aria-hidden="true">자세히 ▾</span>
       </button>
     </article>`;
@@ -687,14 +899,23 @@ function fitKgPart(raw) {
   return (m ? m[0] : t).trim();
 }
 
-/* 보조 회색 1줄(타일): 사이즈 · 실측 요약. 배송/쇼핑몰은 위 mallrow에서 표기 */
-function subLine(p, isBig) {
+/* 보조 회색 1줄(타일): 도메인별 분기
+   - 의류: 사이즈 · 실측 요약
+   - 음식: unitNote(개당·단가)
+   - 생활용품: safetyNote(안전 근거) */
+function subLine(p, dom, isBig) {
+  if (dom === "음식") {
+    return (p.unitNote && String(p.unitNote).trim()) ? "🏷️ " + String(p.unitNote).trim() : (p.foodCategory || "");
+  }
+  if (dom === "생활용품") {
+    return (p.safetyNote && String(p.safetyNote).trim()) ? "🛡️ " + String(p.safetyNote).trim() : (p.roomCategory || "");
+  }
   const parts = [];
   if (p.sizeRange) parts.push(`📏 ${p.sizeRange}`);
   // 빅사이즈는 실측 한 항목을 추가로 (가슴/허리)
   if (isBig) {
-    if (p.chest != null) parts.push(`가슴${esc(p.chest)}`);
-    else if (p.waist != null) parts.push(`허리${esc(p.waist)}`);
+    if (p.chest != null) parts.push(`가슴${p.chest}`);
+    else if (p.waist != null) parts.push(`허리${p.waist}`);
   }
   if (!parts.length) parts.push(p.type || "");
   return parts.join(" · ");
@@ -757,10 +978,18 @@ function watchImages(container, onChange) {
 function ratingHTML(p) {
   const comp = Math.max(0, Math.min(5, Number(p._composite) || 0));
   const pct = (comp / 5) * 100;
-  const reviewR = (Number(p.rating) || 0).toFixed(1);
   const valueR = (Number(p._value) || 0).toFixed(1);
+  const dom = domainOf(p);
+  let title;
+  if (dom === "음식") {
+    title = `맛 ${clampScore(p.scoreTaste).toFixed(1)} · 만족 ${clampScore(p.scoreSatisfy).toFixed(1)} · 가성비 ${valueR}`;
+  } else if (dom === "생활용품") {
+    title = `안전 ${clampScore(p.scoreSafety).toFixed(1)} · 만족 ${clampScore(p.scoreSatisfy).toFixed(1)} · 가성비 ${valueR} · 공간 ${clampScore(p.scoreSpace).toFixed(1)}`;
+  } else {
+    title = `리뷰 ${(Number(p.rating) || 0).toFixed(1)} · 가성비 ${valueR}`;
+  }
   return `
-    <span class="rating" title="리뷰 ${reviewR} · 가성비 ${valueR}">
+    <span class="rating" title="${esc(title)}">
       <span class="stars" aria-label="종합 별점 ${comp}점">
         <span class="base">★★★★★</span>
         <span class="fill" style="width:${pct}%">★★★★★</span>
@@ -812,6 +1041,15 @@ function bindDetails(container) {
   });
 }
 
+/* 상세 시트 보조: 상품의 출처/근거를 짧고 정직한 한 줄로. 비영리·자체평가 기준 */
+function sourceBlock(p) {
+  const checkedRaw = (p.priceCheckedAt && String(p.priceCheckedAt).trim()) ? String(p.priceCheckedAt).trim() : "";
+  const checked = (checkedRaw && checkedRaw !== "미확인") ? checkedRaw : "";
+  let line = "📄 정보·사진 출처: 각 쇼핑몰 · 별점·후기·사이즈: 옷싹 자체 평가";
+  if (checked) line += ` · 가격확인: ${esc(checked)}`;
+  return `<div class="dt-sec dt-source"><p class="dt-source-line">${line}</p></div>`;
+}
+
 /* 상세 시트 보조: seller(판매자)가 있으면 "판매: <seller>" 작게 노출. 없으면 아무것도 안 띄움(회귀 방지) */
 function sellerLine(p) {
   const s = (p.seller && String(p.seller).trim()) ? String(p.seller).trim() : "";
@@ -833,20 +1071,30 @@ function openDetail(id) {
   const p = ALL.find((x) => x.id === id);
   if (!p) return;
   computeFor(p);                       // 자기 분류 풀 기준 종합별점 계산
-  const isBig = p.sizeClass === "빅사이즈";
+  const dom = domainOf(p);
+  const isCloth = dom === "의류";
+  const isBig = isCloth && p.sizeClass === "빅사이즈";
   const mc = mallColor(p.mall || "");
   const price = Number(p.price || 0).toLocaleString("ko-KR");
   const href = p.link ? esc(p.link) : "";
 
+  // 의류 전용: 핏/실측 (음식·생활용품은 숨김)
   const fitBlock = (isBig && p.fitText && String(p.fitText).trim())
     ? `<div class="dt-fit"><span class="dt-fit-ico">🧍</span><span>${esc(String(p.fitText).replace(/^🧍\s*/, ""))}</span></div>`
     : "";
+  const measureBlock = (isCloth && fullMeasureHTML(p))
+    ? `<div class="dt-sec"><h4>📏 실측 사이즈</h4>${fullMeasureHTML(p)}</div>` : "";
+
+  // 음식: 단가(unitNote) / 생활용품: 안전 근거(safetyNote)
+  const unitBlock = (dom === "음식" && p.unitNote && String(p.unitNote).trim())
+    ? `<div class="dt-sec"><h4>🏷️ 개당·단가</h4><p>${esc(p.unitNote)}</p></div>` : "";
+  const safetyBlock = (dom === "생활용품" && p.safetyNote && String(p.safetyNote).trim())
+    ? `<div class="dt-sec"><h4>🛡️ 안전·내구 근거</h4><p>${esc(p.safetyNote)}</p></div>` : "";
+
   const reviewBlock = (p.reviewSummary && String(p.reviewSummary).trim())
     ? `<div class="dt-sec"><h4>⭐ 현실 후기 요약</h4><p>${esc(p.reviewSummary)}</p></div>` : "";
   const cautionBlock = (p.caution && String(p.caution).trim())
     ? `<div class="dt-sec dt-warn"><h4>⚠️ 이건 알아두세요</h4><p>${esc(p.caution)}</p></div>` : "";
-  const measureBlock = fullMeasureHTML(p)
-    ? `<div class="dt-sec"><h4>📏 실측 사이즈</h4>${fullMeasureHTML(p)}</div>` : "";
 
   $("#detail-body").innerHTML = `
     <div class="dt-head">
@@ -862,9 +1110,12 @@ function openDetail(id) {
       ${sellerLine(p)}
     </div>
     ${fitBlock}
+    ${unitBlock}
+    ${safetyBlock}
     ${reviewBlock}
     ${measureBlock}
-    ${cautionBlock}`;
+    ${cautionBlock}
+    ${sourceBlock(p)}`;
 
   const buyBtn = $("#detail-buy");
   if (href) { buyBtn.href = href; buyBtn.style.display = ""; }
@@ -1062,10 +1313,12 @@ function renderCompareView() {
 
   // 어떤 실측 행을 보여줄지 — 하나라도 값이 있는 항목만 행 노출
   const measureDefs = [
-    { key: "sizeRange", label: "사이즈범위", unit: "" },
-    { key: "chest",     label: "가슴",       unit: "cm" },
-    { key: "waist",     label: "허리",       unit: "cm" },
-    { key: "length",    label: "총장",       unit: "cm" }
+    { key: "unitNote",   label: "단가",       unit: "" },
+    { key: "safetyNote", label: "안전",       unit: "" },
+    { key: "sizeRange",  label: "사이즈범위", unit: "" },
+    { key: "chest",      label: "가슴",       unit: "cm" },
+    { key: "waist",      label: "허리",       unit: "cm" },
+    { key: "length",     label: "총장",       unit: "cm" }
   ];
   const shownMeasures = measureDefs.filter((m) => items.some((p) => p[m.key] != null && p[m.key] !== ""));
   const anyBig = items.some((p) => p.sizeClass === "빅사이즈");

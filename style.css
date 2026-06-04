@@ -169,6 +169,22 @@ button{font-family:inherit;color:inherit;}
   background:rgba(150,90,255,.55);
   padding:2px 7px;border-radius:999px;
 }
+/* 도메인 패널(홈 1단계): 3개를 큼직하게 (옷/음식/생활용품) */
+.domain-cards{
+  grid-template-columns:repeat(3,1fr);
+  gap:11px;
+  margin-top:6px;
+}
+.domain-tile{
+  aspect-ratio:auto;
+  min-height:124px;
+  gap:7px;
+  padding:16px 8px;
+}
+.domain-tile .gt-emoji{font-size:38px;}
+.domain-tile .gt-name{font-size:14px;}
+.domain-tile .gt-count{font-size:11px;padding:3px 9px;}
+
 /* 미래 콘텐츠용 빈 placeholder 박스 (반투명, 클릭 무반응) */
 .group-tile.is-empty{
   background:rgba(255,255,255,.10);
@@ -416,17 +432,48 @@ button{font-family:inherit;color:inherit;}
 .info-card li::before{content:"•";position:absolute;left:4px;color:var(--point);font-weight:800;}
 .info-foot{text-align:center;color:var(--muted);font-size:13px;padding:10px 0 4px;}
 
-/* 문의 메일 링크 */
-.mail-link{
-  display:inline-block;margin-top:12px;
-  font-size:15px;font-weight:800;color:var(--point);
-  text-decoration:none;
-  background:var(--point-soft);
-  border:1px solid rgba(233,69,96,.4);
-  padding:10px 16px;border-radius:12px;
-  word-break:break-all;
+/* 문의 / 건의 폼 */
+.inquiry-form{display:flex;flex-direction:column;gap:12px;margin-top:14px;}
+.inq-field{display:flex;flex-direction:column;gap:6px;}
+.inq-label{font-size:13px;font-weight:700;color:var(--muted-2);}
+.inq-label em{font-style:normal;font-weight:600;color:var(--muted);font-size:12px;}
+.inq-select,.inq-textarea,.inq-input{
+  width:100%;
+  font-family:inherit;font-size:14px;color:var(--text);
+  background:var(--bg);
+  border:1px solid var(--border);border-radius:12px;
+  padding:11px 13px;
+  transition:border-color .15s,box-shadow .15s;
+  -webkit-appearance:none;appearance:none;
+  user-select:text;-webkit-user-select:text;
 }
-.mail-link:active{opacity:.8;}
+.inq-select{
+  cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23b072ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;
+  padding-right:34px;
+}
+.inq-select option{background:var(--panel);color:var(--text);}
+.inq-textarea{resize:vertical;min-height:90px;line-height:1.5;}
+.inq-select:focus,.inq-textarea:focus,.inq-input:focus{
+  outline:none;border-color:var(--point);
+  box-shadow:0 0 0 3px rgba(176,114,255,.18);
+}
+.inq-input::placeholder,.inq-textarea::placeholder{color:var(--muted);}
+.inq-submit{
+  margin-top:2px;
+  font-size:15px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,#b072ff,#7c5cff);
+  border:none;border-radius:12px;
+  padding:12px 16px;cursor:pointer;transition:.15s;
+}
+.inq-submit:active{transform:scale(.98);opacity:.92;}
+.inq-msg{
+  margin-top:2px;font-size:13.5px;font-weight:700;line-height:1.5;
+  padding:10px 13px;border-radius:12px;
+}
+.inq-msg.ok{color:var(--text);background:var(--point-soft);border:1px solid rgba(176,114,255,.4);}
+.inq-msg.err{color:#ffd0d8;background:rgba(233,69,96,.12);border:1px solid rgba(233,69,96,.45);}
 
 /* ===== 하단 탭바 ===== */
 .bottom-nav{
@@ -538,6 +585,17 @@ button{font-family:inherit;color:inherit;}
 }
 .dt-measure dt{font-size:11px;color:var(--muted);}
 .dt-measure dd{font-size:14px;font-weight:800;color:var(--text);}
+
+/* 출처/근거 — 작은 회색 보조정보 */
+.dt-source{
+  background:rgba(124,77,255,.06);border:1px solid var(--border);
+  border-radius:12px;padding:10px 13px;
+}
+.dt-source dl{display:flex;flex-direction:column;gap:4px;margin:0;}
+.dt-source dl>div{display:flex;gap:7px;font-size:12px;line-height:1.5;}
+.dt-source dt{flex:0 0 64px;color:var(--muted);font-weight:600;}
+.dt-source dd{margin:0;color:var(--muted-2);flex:1;}
+.dt-source-line{margin:0;font-size:11.5px;line-height:1.55;color:var(--muted);}
 
 /* 구매 버튼 (링크형) */
 .btn-buy{

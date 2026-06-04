@@ -69,8 +69,8 @@
     <!-- ===================== 탭1: 둘러보기 ===================== -->
     <section class="tab-page active" id="tab-browse" aria-label="둘러보기">
 
-      <!-- 1단계: 진입 화면 (홀로그램 홈 — 무지개 배경 + 크리스탈 + 후광 + 그룹 카드) -->
-      <div class="screen screen-step active" id="screen-group">
+      <!-- 1단계: 진입 화면 (홀로그램 홈 — 무지개 배경 + 크리스탈 + 후광 + 도메인 패널) -->
+      <div class="screen screen-step active" id="screen-domain">
         <div class="holo-home">
           <!-- 움직이는 무지개 오로라 배경 -->
           <div class="holo-bg" aria-hidden="true"></div>
@@ -102,15 +102,27 @@
 
           <h1 class="holo-title">옷싹</h1>
 
-          <!-- 후광 무지개 링 + 그룹 카드 -->
+          <!-- 후광 무지개 링 + 도메인 패널 (👕 옷 / 🍱 음식 / 🧹 생활용품) -->
           <div class="holo-stage">
             <div class="holo-halo" aria-hidden="true"></div>
-            <div class="group-cards" id="group-choices"></div>
+            <div class="group-cards domain-cards" id="domain-choices"></div>
           </div>
         </div>
       </div>
 
-      <!-- 2단계: 종류 선택 -->
+      <!-- 2단계(옷): 성별×사이즈 그룹 선택 -->
+      <div class="screen screen-step" id="screen-clothgroup">
+        <div class="step-topbar">
+          <button class="icon-btn back-btn" id="back-to-domain" type="button" aria-label="뒤로가기">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <span class="step-crumb" id="crumb-domain">👕 옷</span>
+        </div>
+        <p class="step-q">누구 옷 보실래요?</p>
+        <div class="choice-list" id="clothgroup-choices"></div>
+      </div>
+
+      <!-- 2단계(공통): 카테고리 선택 (옷=종류 / 음식·생활용품=도메인 카테고리) -->
       <div class="screen screen-step" id="screen-category">
         <div class="step-topbar">
           <button class="icon-btn back-btn" id="back-to-group" type="button" aria-label="뒤로가기">
@@ -118,7 +130,7 @@
           </button>
           <span class="step-crumb" id="crumb-group"></span>
         </div>
-        <p class="step-q">어떤 옷 보실래요?</p>
+        <p class="step-q" id="category-q">어떤 옷 보실래요?</p>
         <div class="choice-list" id="category-choices"></div>
       </div>
 
@@ -167,22 +179,28 @@
       </div>
       <div class="info-wrap">
         <div class="info-card">
-          <div class="info-emoji">🧥</div>
+          <div class="info-emoji">🛍️</div>
           <h3>옷싹이 뭐예요?</h3>
-          <p>여기저기 쇼핑몰 옷을 모아다가 가격이랑 별점·후기를 한눈에 비교해주는 앱이에요. 발품 안 팔고 똑똑하게 골라봐요!</p>
-          <p style="margin-top:8px;"><b>남성·여성</b>을 <b>일반/빅사이즈</b>로 나누고, 그 안에서 <b>바람막이·청바지·티셔츠·아웃도어팬츠·져지·트레이닝복</b>으로 골라볼 수 있어요. 빅사이즈는 체중 추천핏이랑 실측까지 알려드려요!</p>
+          <p>여기저기 쇼핑몰의 꿀템을 모아다가 가격이랑 별점·후기를 한눈에 비교해주는 앱이에요. 발품 안 팔고 똑똑하게 골라봐요!</p>
+          <p style="margin-top:8px;">이제 <b>👕 옷 · 🍱 음식 · 🧹 생활용품</b> 3가지로 골라볼 수 있어요. 1인가구 기준으로 <b>가성비 좋고 후기 좋은 것</b>만 골라 담았어요. 옷은 성별·사이즈·종류로, 음식·생활용품은 카테고리로 들어가면 돼요!</p>
         </div>
         <div class="info-card">
           <div class="info-emoji">⭐</div>
           <h3>종합별점이 뭔가요?</h3>
-          <p>실제 리뷰 평점이랑 같은 종류 안에서의 가성비 점수를 섞어서 매긴 점수예요. 비싸기만 하고 별로면 점수가 깎이고, 싸고 평 좋으면 올라가요.</p>
+          <p>같은 카테고리 안에서의 <b>가성비</b>에다가, 도메인마다 중요한 항목을 섞어서 매긴 점수예요. 비싸기만 하고 별로면 깎이고, 싸고 평 좋으면 올라가요.</p>
+          <ul style="margin-top:8px;">
+            <li><b>옷</b> = 리뷰별점 65% + 가성비 35%</li>
+            <li><b>음식</b> = 맛 40% + 만족도 35% + 가성비 25%</li>
+            <li><b>생활용품</b> = 안전 35% + 만족도 30% + 가성비 20% + 공간효율 15%</li>
+          </ul>
         </div>
         <div class="info-card warn">
           <div class="info-emoji">⚠️</div>
           <h3>꼭 알아두세요</h3>
           <ul>
-            <li>가격은 수시로 바뀌어요. 구매 전에 꼭 다시 확인해주세요.</li>
-            <li>이미지는 실제 판매 페이지 썸네일을 그대로 가져온 거예요.</li>
+            <li>가격·정보는 실시간이 아니에요. 수시로 바뀌니 구매 전에 꼭 다시 확인해주세요.</li>
+            <li>상품 이미지·정보의 권리는 각 쇼핑몰·브랜드에 있어요. 옷싹은 비교를 위해 참고로 보여드려요.</li>
+            <li>옷싹은 상품마다 데이터 출처와 근거를 표기해요. 별점·후기는 옷싹이 직접 정리한 자체 평가예요.</li>
             <li>사이즈·핏은 후기 기준이라 사람마다 다를 수 있어요.</li>
             <li>구매·결제는 각 쇼핑몰에서 진행돼요. 옷싹은 비교만 도와드려요.</li>
           </ul>
@@ -193,10 +211,40 @@
           <p>마음에 드는 옷의 <b>구매하러 가기</b> 버튼을 누르면 해당 쇼핑몰로 새 창이 열려요. 거기서 결제하면 끝!</p>
         </div>
         <div class="info-card">
+          <div class="info-emoji">⚖️</div>
+          <h3>옷싹을 쓰기 전에 알아두세요</h3>
+          <p>옷싹은 돈 안 받고 혼자 만든 비영리 개인 프로젝트예요. 옷들을 한눈에 비교해서 보여주는 게 전부예요.</p>
+          <p style="margin-top:8px;">상품 사진·정보의 권리는 각 쇼핑몰·브랜드한테 있어요. 옷싹은 검색·비교를 돕는 작은 썸네일로만 보여줘요. 사진을 크게 박거나 따로 모아두진 않아요.</p>
+          <p style="margin-top:8px;">가격·정보는 실시간이 아니에요. 옷싹이 확인한 시점 기준이라 실제랑 다를 수 있으니 살 때 꼭 다시 봐주세요.</p>
+          <p style="margin-top:8px;">옷싹은 직접 팔지 않아요. 판매·결제·교환·환불은 전부 각 쇼핑몰에서 진행되고, 옷싹은 거래 당사자가 아니에요.</p>
+          <p style="margin-top:8px;">별점·후기 요약·사이즈는 옷싹이 직접 매기고 정리한 자체 평가예요. 어떤 수수료도 받지 않아요.</p>
+          <p style="margin-top:8px;">사진·정보의 권리자가 "내려달라"고 하시면 바로 내릴게요 🙆</p>
+        </div>
+        <div class="info-card">
           <div class="info-emoji">📮</div>
-          <h3>문의사항 메일 주세요!</h3>
-          <p>궁금한 거나 건의할 거 있으면 편하게 메일 주세요. 최대한 빨리 답장 드릴게요 🙆</p>
-          <a class="mail-link" href="mailto:dldmsdnr1228@gmail.com">dldmsdnr1228@gmail.com</a>
+          <h3>건의 / 수정 요청</h3>
+          <p>버그나 추가했으면 하는 상품, 틀린 정보 있으면 여기다 적어주세요. 확인하고 반영할게요 🙆</p>
+          <form class="inquiry-form" id="inquiry-form" novalidate>
+            <label class="inq-field">
+              <span class="inq-label">분류</span>
+              <select class="inq-select" id="inq-category">
+                <option value="버그·오류">버그·오류</option>
+                <option value="상품 추가 요청">상품 추가 요청</option>
+                <option value="가격·정보 수정 요청">가격·정보 수정 요청</option>
+                <option value="기타 건의">기타 건의</option>
+              </select>
+            </label>
+            <label class="inq-field">
+              <span class="inq-label">내용</span>
+              <textarea class="inq-textarea" id="inq-content" rows="4" placeholder="어떤 점이 궁금하거나 고쳤으면 하세요?"></textarea>
+            </label>
+            <label class="inq-field">
+              <span class="inq-label">연락처 <em>(선택)</em></span>
+              <input class="inq-input" id="inq-contact" type="text" placeholder="답장 받을 메일·카톡 (선택)" autocomplete="off">
+            </label>
+            <button class="inq-submit" id="inq-submit" type="submit">보내기</button>
+            <p class="inq-msg" id="inq-msg" role="status" aria-live="polite" hidden></p>
+          </form>
         </div>
         <p class="info-foot">옷싹 · 즐거운 옷 쇼핑 되세요 🙌</p>
       </div>
@@ -297,6 +345,9 @@
       <a class="btn-primary btn-buy" id="detail-buy" target="_blank" rel="noopener noreferrer">🛒 구매하러 가기</a>
     </div>
   </div>
+
+  <!-- 문의 폼 제출용 숨은 sink (구글폼 formResponse target · 페이지 이동 방지) -->
+  <iframe name="otssak-inquiry-sink" id="otssak-inquiry-sink" title="문의 전송" hidden style="display:none;width:0;height:0;border:0;"></iframe>
 
   <script src="app.js"></script>
   <script>
