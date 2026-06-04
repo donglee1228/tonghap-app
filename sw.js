@@ -1,4 +1,4 @@
-/* 옷싹 서비스워커 v20260604d
+/* 옷싹 서비스워커 v20260605a
    - install: 앱 셸 프리캐시 (오프라인 첫 방문에도 셸 로드 가능)
    - activate: 구버전 캐시만 삭제(현재 버전 유지) + clients.claim
    - fetch 전략:
@@ -7,7 +7,7 @@
        · 기타 동일 출처 정적 자원(css/js/png/svg/manifest): cache-first + 백그라운드 갱신
        · 외부 출처(이미지 프록시 등): SW 미개입(그대로 통과)
 */
-const VERSION = "otssak-v20260604d";
+const VERSION = "otssak-v20260605a";
 const SHELL = [
   "./",
   "./index.html",
