@@ -178,6 +178,21 @@ const DOMAIN_CONFIG = [
       { key: "specNote", icon: "⚙️", label: "스펙·재질", where: "card" },
       { key: "unitNote", icon: "🏷️", label: "회당 단가", where: "detail" }
     ]
+  },
+  {
+    key: "중고차", emoji: "🚗", name: "중고차", title: "🚗 중고차 (LPG)", desc: "LPG 중고차 시세·정비·옵션",
+    categoryKey: "carCategory", defaultEmoji: "🚗",
+    scoreFields: [
+      { field: "scoreReliability", label: "내구·신뢰", weight: 0.40 },
+      { field: "scoreSatisfy",     label: "만족",     weight: 0.35 }
+    ],
+    valueWeight: 0.25,
+    extraFields: [
+      { key: "priceNote",  icon: "💰", label: "시세·등급",        where: "card" },
+      { key: "specNote",   icon: "🚗", label: "차량 정보",        where: "detail" },
+      { key: "optionNote", icon: "⚙️", label: "주요 옵션",        where: "detail" },
+      { key: "maintNote",  icon: "🔧", label: "정비·점검 포인트", where: "detail" }
+    ]
   }
 ];
 
@@ -216,7 +231,8 @@ const CATEGORY_ORDER = {
   healthCategory: ["마그네슘", "오메가3", "종합비타민", "비타민D", "유산균(프로바이오틱스)", "밀크씨슬(간)", "아연·미네랄", "루테인(눈)", "수면(테아닌·멜라토닌)"],
   beautyCategory: ["스킨·로션·올인원", "에센스·세럼", "선크림", "클렌징·폼", "토너·패드", "면도·셰이빙", "헤어·스타일링", "샴푸·바디워시", "데오드란트·향", "립밤·핸드바디"],
   techCategory:   ["보조배터리", "충전기·멀티충전", "케이블", "블루투스 이어폰", "마우스·키보드", "모니터·받침대", "웹캠·마이크", "USB허브·독·메모리"],
-  fitCategory:    ["덤벨·중량", "폼롤러·마사지", "요가매트", "푸쉬업·철봉·밴드", "프로틴·보충제", "쉐이커·소품"]
+  fitCategory:    ["덤벨·중량", "폼롤러·마사지", "요가매트", "푸쉬업·철봉·밴드", "프로틴·보충제", "쉐이커·소품"],
+  carCategory:    ["경·소형 LPG", "준중형 LPG", "중형 LPG", "준대형 LPG", "LPG SUV·승합"]
 };
 const CATEGORY_EMOJI = {
   garmentType: {
@@ -252,6 +268,9 @@ const CATEGORY_EMOJI = {
   fitCategory: {
     "덤벨·중량": "🏋️", "폼롤러·마사지": "💆", "요가매트": "🧘", "푸쉬업·철봉·밴드": "💪",
     "프로틴·보충제": "🥤", "쉐이커·소품": "🧴"
+  },
+  carCategory: {
+    "경·소형 LPG": "🚙", "준중형 LPG": "🚗", "중형 LPG": "🚘", "준대형 LPG": "🛻", "LPG SUV·승합": "🚐"
   }
 };
 /* 카테고리 정렬 순서 가져오기 (없으면 빈 배열) */
@@ -985,8 +1004,20 @@ function genderClass(g) {
   return "uni";
 }
 
+/* 가격 표기: 백만원 이상(중고차 등)은 만원 단위로 환산해 한눈에 보이게.
+   일반 상품(<100만원)은 기존처럼 원단위 그대로. */
+function priceInnerHTML(won) {
+  won = Number(won || 0);
+  if (won >= 1000000) return `${Math.round(won / 10000).toLocaleString("ko-KR")}<small>만원</small>`;
+  return `${won.toLocaleString("ko-KR")}<small>원</small>`;
+}
+function priceText(won) {
+  won = Number(won || 0);
+  if (won >= 1000000) return `${Math.round(won / 10000).toLocaleString("ko-KR")}만원`;
+  return `${won.toLocaleString("ko-KR")}원`;
+}
+
 function cardHTML(p) {
-  const price = Number(p.price || 0).toLocaleString("ko-KR");
   const mc = mallColor(p.mall || "");
   const faved = FAVS.has(p.id);
   const src = proxiedImg(p.image);
@@ -1009,7 +1040,7 @@ function cardHTML(p) {
       <button class="card-body" type="button" data-detail="${esc(p.id)}" aria-expanded="false" aria-label="${esc(p.name)} 상세 보기">
         <h3 class="card-name">${esc(p.name || "")}</h3>
         <div class="card-line">
-          <span class="price">${price}<small>원</small></span>
+          <span class="price">${priceInnerHTML(p.price)}</span>
           ${ratingHTML(p)}
         </div>
         <div class="card-mallrow">
@@ -1211,7 +1242,6 @@ function openDetail(id) {
   const isCloth = cfg.special === "cloth";
   const isBig = isCloth && p.sizeClass === "빅사이즈";
   const mc = mallColor(p.mall || "");
-  const price = Number(p.price || 0).toLocaleString("ko-KR");
   const href = p.link ? esc(p.link) : "";
 
   // 의류 전용: 핏/실측 (그 외 도메인은 숨김)
@@ -1238,7 +1268,7 @@ function openDetail(id) {
     <div class="dt-head">
       <h3 class="dt-name">${esc(p.name || "")}</h3>
       <div class="dt-meta">
-        <span class="price">${price}<small>원</small></span>
+        <span class="price">${priceInnerHTML(p.price)}</span>
         ${ratingHTML(p)}
       </div>
       <div class="dt-mallrow">
@@ -1499,7 +1529,7 @@ function renderCompareView() {
   rows.push(`${trOpen(rowClass(items.map((p) => Number(p.price) || "")) + " js-row-price")}<th scope="row">가격</th>${items.map((p) => {
     const pr = Number(p.price) || 0;
     const best = isFinite(minPrice) && pr === minPrice;
-    const txt = pr ? pr.toLocaleString("ko-KR") + "원" : "-";
+    const txt = pr ? priceText(pr) : "-";
     return cell(`<span class="cmp-price">${esc(txt)}</span>${best ? `<span class="cmp-best">최저가</span>` : ""}`, best ? "is-best" : "");
   }).join("")}</tr>`);
   // 종합별점 (최고 강조)
