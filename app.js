@@ -1049,6 +1049,7 @@ function cardHTML(p) {
           <span class="price">${priceInnerHTML(p.price)}</span>
           ${ratingHTML(p)}
         </div>
+        ${dom === "중고차" ? carYearChip(p) : ""}
         <div class="card-mallrow">
           <span class="ship-mall" style="background:${mc}">${esc(p.mall || "")}</span>
           <span class="ship-ico">${overseasIcon(p.mall)}</span>
@@ -1072,6 +1073,14 @@ function fitKgPart(raw) {
   const t = raw.replace(/^🧍\s*/, "");
   const m = t.match(/^[^()]*추천/);   // 괄호(세부사이즈) 앞까지
   return (m ? m[0] : t).trim();
+}
+/* 중고차 카드용: specNote/name에서 연식(년식)을 뽑아 칩으로 노출 */
+function carYearChip(p) {
+  const s = `${p.specNote || ""} ${p.name || ""}`;
+  const m = s.match(/(19|20)\d{2}\s*년식/) || s.match(/\b(19|20)\d{2}\b/);
+  if (!m) return "";
+  const yr = m[0].replace(/\s*년식/, "");
+  return `<span class="fit-chip">📅 ${esc(yr)}년식</span>`;
 }
 
 /* 보조 회색 1줄(타일): DOMAIN_CONFIG extraFields(where:"card") 기반 일반화
