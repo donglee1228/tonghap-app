@@ -180,7 +180,7 @@ const DOMAIN_CONFIG = [
     ]
   },
   {
-    key: "중고차", emoji: "🚗", name: "중고차", title: "🚗 중고차 (LPG)", desc: "LPG 중고차 시세·정비·옵션",
+    key: "중고차", emoji: "🚗", name: "중고차", title: "🚗 중고차 (LPG)", desc: "300만원대 LPG 실속차 — 냉정 분석",
     categoryKey: "carCategory", defaultEmoji: "🚗",
     scoreFields: [
       { field: "scoreReliability", label: "내구·신뢰", weight: 0.40 },
@@ -188,10 +188,16 @@ const DOMAIN_CONFIG = [
     ],
     valueWeight: 0.25,
     extraFields: [
-      { key: "priceNote",  icon: "💰", label: "시세·등급",        where: "card" },
-      { key: "specNote",   icon: "🚗", label: "차량 정보",        where: "detail" },
-      { key: "optionNote", icon: "⚙️", label: "주요 옵션",        where: "detail" },
-      { key: "maintNote",  icon: "🔧", label: "정비·점검 포인트", where: "detail" }
+      { key: "priceNote",   icon: "💰", label: "차량가·총비용·등급",  where: "card" },
+      { key: "specNote",    icon: "🚗", label: "차량 정보",           where: "detail" },
+      { key: "prosNote",    icon: "👍", label: "장점",                where: "detail" },
+      { key: "consNote",    icon: "👎", label: "냉정한 단점",         where: "detail" },
+      { key: "recordNote",  icon: "📋", label: "성능점검기록부 분석", where: "detail" },
+      { key: "lifeNote",    icon: "⏳", label: "얼마나 더 탈 수 있나", where: "detail" },
+      { key: "cheapReason", icon: "🏷️", label: "저렴한 이유",         where: "detail" },
+      { key: "partsNote",   icon: "🔩", label: "부품·재생품 수급",     where: "detail" },
+      { key: "costNote",    icon: "💸", label: "부대비용 포함 총비용", where: "detail" },
+      { key: "checkNote",   icon: "✅", label: "살 때 체크포인트",     where: "detail" }
     ]
   }
 ];
@@ -232,7 +238,7 @@ const CATEGORY_ORDER = {
   beautyCategory: ["스킨·로션·올인원", "에센스·세럼", "선크림", "클렌징·폼", "토너·패드", "면도·셰이빙", "헤어·스타일링", "샴푸·바디워시", "데오드란트·향", "립밤·핸드바디"],
   techCategory:   ["보조배터리", "충전기·멀티충전", "케이블", "블루투스 이어폰", "마우스·키보드", "모니터·받침대", "웹캠·마이크", "USB허브·독·메모리"],
   fitCategory:    ["덤벨·중량", "폼롤러·마사지", "요가매트", "푸쉬업·철봉·밴드", "프로틴·보충제", "쉐이커·소품"],
-  carCategory:    ["경·소형 LPG", "준중형 LPG", "중형 LPG", "준대형 LPG", "LPG SUV·승합"]
+  carCategory:    ["경·소형 LPG", "준중형 LPG", "중형 LPG", "준대형·승합 LPG"]
 };
 const CATEGORY_EMOJI = {
   garmentType: {
@@ -270,7 +276,7 @@ const CATEGORY_EMOJI = {
     "프로틴·보충제": "🥤", "쉐이커·소품": "🧴"
   },
   carCategory: {
-    "경·소형 LPG": "🚙", "준중형 LPG": "🚗", "중형 LPG": "🚘", "준대형 LPG": "🛻", "LPG SUV·승합": "🚐"
+    "경·소형 LPG": "🚙", "준중형 LPG": "🚗", "중형 LPG": "🚘", "준대형·승합 LPG": "🚐"
   }
 };
 /* 카테고리 정렬 순서 가져오기 (없으면 빈 배열) */
@@ -1273,7 +1279,7 @@ function openDetail(id) {
       </div>
       <div class="dt-mallrow">
         <span class="ship-mall" style="background:${mc}">${esc(p.mall || "")}</span>
-        <span class="dt-ship">${esc(shipHint(p.mall))}</span>
+        <span class="dt-ship">${domainOf(p) === "중고차" ? "📄 시세 기준 · 실매물 아님" : esc(shipHint(p.mall))}</span>
       </div>
       ${sellerLine(p)}
     </div>
